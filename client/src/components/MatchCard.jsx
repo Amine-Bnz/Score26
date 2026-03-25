@@ -61,7 +61,7 @@ export function MatchCardAvenir({ match, userId, lang }) {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 p-4">
+    <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 p-4">
       {/* Date + verrou */}
       <div className="flex items-center justify-center gap-2 mb-4">
         <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tracking-wide">
@@ -109,7 +109,7 @@ export function MatchCardPasse({ match, lang }) {
   const style = resultStyles[resultat]
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 overflow-hidden">
+    <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 overflow-hidden">
       {/* Barre colorée en haut selon résultat */}
       <div className={`h-1 w-full ${style.bar}`} />
 

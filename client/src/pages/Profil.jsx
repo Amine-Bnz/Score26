@@ -64,7 +64,7 @@ export default function Profil({ userId, lang }) {
       </div>
 
       {/* Résumé */}
-      <div className="w-full bg-white dark:bg-slate-900 rounded-2xl ring-1 ring-slate-100 dark:ring-slate-800/60 shadow-sm shadow-slate-200 dark:shadow-none p-5">
+      <div className="w-full bg-slate-50 dark:bg-slate-900 rounded-2xl ring-1 ring-slate-100 dark:ring-slate-800/60 shadow-sm shadow-slate-200 dark:shadow-none p-5">
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4">
           {t(lang, 'summary')}
         </p>
