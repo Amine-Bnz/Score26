@@ -39,5 +39,58 @@
 - `Profil.jsx` : avatar DiceBear v9, stats, bouton partager (html2canvas à implémenter)
 - Build Vite : ✓ 0 erreur
 
+### Comment tester l'app en local
+
+#### 1. Préparer la base de données
+```bash
+cd server
+node seed.js        # insère 3 matchs fictifs (remet à zéro si relancé)
+```
+
+#### 2. Démarrer le backend (terminal 1)
+```bash
+cd server
+npm run dev         # Express sur http://localhost:3000
+```
+Vérifier que le serveur répond : http://localhost:3000/api/health → `{"status":"ok"}`
+
+#### 3. Démarrer le frontend (terminal 2)
+```bash
+cd client
+npm run dev         # Vite sur http://localhost:5173
+```
+Ouvrir http://localhost:5173 dans le navigateur.
+
+#### 4. Parcours de test complet
+1. **Onboarding** : saisir un pseudo → valider → redirection automatique vers "Matchs à venir"
+2. **Matchs à venir** : saisir des scores dans les inputs ronds → attendre 600ms → vérifier en BDD que le prono est sauvegardé
+3. **Simuler un score réel** (depuis un terminal) :
+   ```bash
+   curl -X PATCH http://localhost:3000/api/matchs/ID_DU_MATCH \
+     -H "Content-Type: application/json" \
+     -d '{"score_reel_a": 2, "score_reel_b": 1}'
+   ```
+   Remplacer ID_DU_MATCH par l'id du match concerné (visible dans la BDD ou via GET /api/matchs).
+4. **Matchs passés** : le match apparaît avec le score réel, la bordure colorée et les points
+5. **Profil** : avatar DiceBear, score total, résumé des stats
+
+#### 5. Inspecter la BDD directement (optionnel)
+```bash
+# Depuis le dossier server
+node -e "const db = require('./database'); console.log(db.prepare('SELECT * FROM pronos').all())"
+```
+
+#### Notes
+- Les deux terminaux doivent tourner en même temps
+- Si le frontend affiche une erreur réseau, vérifier que le backend est bien démarré
+- `node seed.js` remet les matchs à zéro mais ne touche pas aux users ni aux pronos
+
+### Frontend — bouton Partager
+- `html2canvas` installé
+- Card de partage rendue hors-écran (`left: -9999px`), capturée en PNG x2 pour netteté mobile
+- Avatar en PNG (pas SVG) pour html2canvas via `crossOrigin="anonymous"` + endpoint DiceBear PNG
+- Téléchargement automatique : `score26-{pseudo}.png`
+- Card contient : logo score26, avatar, @pseudo, score total, stats (points colorés)
+
 ### Prochaine étape
-Test end-to-end + bouton partager (html2canvas)
+PWA : vite-plugin-pwa (manifest, icônes, service worker)
