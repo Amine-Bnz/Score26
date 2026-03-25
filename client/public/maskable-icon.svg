@@ -1,0 +1,12 @@
+<!-- Maskable icon : zone sûre = 80% du centre, fond plein sans coins arrondis -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#111827"/>
+  <text
+    x="256" y="310"
+    text-anchor="middle"
+    font-family="Inter, system-ui, sans-serif"
+    font-size="200"
+    font-weight="800"
+    fill="#3b82f6"
+  >26</text>
+</svg>

@@ -92,5 +92,12 @@ node -e "const db = require('./database'); console.log(db.prepare('SELECT * FROM
 - Téléchargement automatique : `score26-{pseudo}.png`
 - Card contient : logo score26, avatar, @pseudo, score total, stats (points colorés)
 
+### PWA
+- `public/icon.svg` + `public/maskable-icon.svg` : icône "26" fond sombre, coins arrondis
+- `index.html` : title, theme-color, viewport-fit, balises Apple
+- `vite.config.js` : VitePWA configuré (manifest, workbox precache, registerType autoUpdate)
+- Build : génère `dist/sw.js` + `dist/manifest.webmanifest`, 10 entrées en précache
+- Note : pour publication, convertir les SVG en PNG 192×192 et 512×512 (meilleure compatibilité Android)
+
 ### Prochaine étape
-PWA : vite-plugin-pwa (manifest, icônes, service worker)
+Finalisation v1 : vérifications, .gitignore, README
