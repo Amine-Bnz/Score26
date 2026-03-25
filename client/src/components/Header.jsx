@@ -1,25 +1,24 @@
-// Header fixe présent sur toutes les pages
 export default function Header({ lang, onLangToggle, theme, onThemeToggle }) {
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 sticky top-0 z-10">
-      {/* Toggle langue */}
+    <header className="flex items-center justify-between px-5 py-3 bg-slate-50 dark:bg-slate-950 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800/60">
+      {/* Toggle langue — libellé EN/FR explicite */}
       <button
         onClick={onLangToggle}
-        className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors w-10"
+        className="text-xs font-bold tracking-widest text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md"
         aria-label="Changer la langue"
       >
-        {lang === 'fr' ? '文A' : 'A文'}
+        {lang === 'fr' ? 'EN' : 'FR'}
       </button>
 
       {/* Logo */}
-      <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
-        score26
+      <span className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
+        score<span className="text-blue-500">26</span>
       </span>
 
       {/* Toggle thème */}
       <button
         onClick={onThemeToggle}
-        className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors w-10 text-right"
+        className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors bg-slate-100 dark:bg-slate-800 w-8 h-8 rounded-md flex items-center justify-center text-sm"
         aria-label="Changer le thème"
       >
         {theme === 'dark' ? '☀️' : '🌙'}

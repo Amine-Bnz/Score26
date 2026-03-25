@@ -44,7 +44,7 @@ export default function App() {
         {page === 'profil' && <Profil       userId={userId} lang={lang} />}
       </main>
 
-      <Navbar page={page} onNavigate={setPage} />
+      <Navbar page={page} onNavigate={setPage} lang={lang} />
     </div>
   )
 }

@@ -1,23 +1,46 @@
 import { useState, useRef } from 'react'
 import { upsertProno } from '../api'
-import { t } from '../i18n'
+import { t, splitTeam } from '../i18n'
 
-// Détermine la couleur de bordure d'une card passée selon le résultat
-function getBorderClass(match) {
-  if (!match.prono_id) return 'border-gray-300 dark:border-gray-700'
+// Couleur de bordure gauche selon le résultat (matchs passés)
+function getResultat(match) {
+  if (!match.prono_id) return 'neutre'
   const { score_predit_a: pA, score_predit_b: pB, score_reel_a: rA, score_reel_b: rB } = match
-  if (pA === rA && pB === rB) return 'border-green-500'
-  if (Math.sign(pA - pB) === Math.sign(rA - rB)) return 'border-blue-500'
-  return 'border-red-500'
+  if (pA === rA && pB === rB) return 'exact'
+  if (Math.sign(pA - pB) === Math.sign(rA - rB)) return 'bonne_issue'
+  return 'rate'
 }
 
-// Formate la date d'un match
-function formatDate(dateStr) {
+const resultStyles = {
+  exact:       { bar: 'bg-green-500', badge: 'bg-green-500/10 text-green-500 border-green-500/20' },
+  bonne_issue: { bar: 'bg-blue-500',  badge: 'bg-blue-500/10  text-blue-500  border-blue-500/20'  },
+  rate:        { bar: 'bg-red-500',   badge: 'bg-red-500/10   text-red-500   border-red-500/20'   },
+  neutre:      { bar: 'bg-slate-600', badge: 'bg-slate-500/10 text-slate-400 border-slate-600/20' },
+}
+
+// Formate la date : "15 JUN · 21:00"
+function formatDate(dateStr, lang) {
   const d = new Date(dateStr)
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const day = d.getDate().toString().padStart(2, '0')
+  const month = d.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short' }).toUpperCase()
+  const time = d.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${day} ${month} · ${time}`
 }
 
-// Card pour les matchs à venir — inputs éditables
+// Bloc équipe : drapeau + nom
+function TeamBlock({ fullName, lang }) {
+  const { flag, name } = splitTeam(fullName, lang)
+  return (
+    <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+      <span className="text-3xl leading-none">{flag}</span>
+      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate w-full text-center">
+        {name}
+      </span>
+    </div>
+  )
+}
+
+// ── Card matchs à venir ──────────────────────────────────────────────────────
 export function MatchCardAvenir({ match, userId, lang }) {
   const [scoreA, setScoreA] = useState(match.score_predit_a ?? '')
   const [scoreB, setScoreB] = useState(match.score_predit_b ?? '')
@@ -28,8 +51,6 @@ export function MatchCardAvenir({ match, userId, lang }) {
   function handleChange(val, setter, autre, isA) {
     const parsed = val === '' ? '' : Math.max(0, parseInt(val) || 0)
     setter(parsed)
-
-    // Sauvegarde automatique après 600ms d'inactivité
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       const a = isA ? parsed : autre
@@ -40,118 +61,100 @@ export function MatchCardAvenir({ match, userId, lang }) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-      {/* Date centré en haut */}
-      <p className="text-center text-xs text-gray-400 dark:text-gray-500 mb-3">
-        {formatDate(match.date_coup_envoi)}
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 p-4">
+      {/* Date + verrou */}
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tracking-wide">
+          {formatDate(match.date_coup_envoi, lang)}
+        </span>
         {isVerrouille && (
-          <span className="ml-2 text-gray-400 dark:text-gray-600">🔒 {t(lang, 'locked')}</span>
-        )}
-      </p>
-
-      {/* Ligne principale : équipe A | inputs | équipe B */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Équipe A */}
-        <div className="flex flex-col items-center flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl mb-1">
-            {match.equipe_a.split(' ')[0]}
-          </div>
-          <span className="text-xs text-center text-gray-700 dark:text-gray-300 font-medium truncate w-full text-center">
-            {match.equipe_a.split(' ').slice(1).join(' ')}
+          <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded-full">
+            🔒 {t(lang, 'locked')}
           </span>
-        </div>
+        )}
+      </div>
+
+      {/* Équipes + inputs */}
+      <div className="flex items-center gap-3">
+        <TeamBlock fullName={match.equipe_a} lang={lang} />
 
         {/* Inputs score */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <input
-            type="number"
-            min="0"
-            max="99"
+            type="number" min="0" max="99"
             value={scoreA}
             disabled={isVerrouille}
             onChange={e => handleChange(e.target.value, setScoreA, scoreB, true)}
-            className="w-11 h-11 rounded-full border-2 border-dashed border-gray-400 dark:border-gray-600 text-center bg-transparent text-lg font-bold focus:border-solid focus:border-blue-500 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed dark:text-white"
+            className="w-12 h-12 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:border-solid focus:border-blue-500 focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed"
           />
-          <span className="text-gray-400 dark:text-gray-500 font-bold">—</span>
+          <span className="text-slate-300 dark:text-slate-600 font-bold text-lg select-none">—</span>
           <input
-            type="number"
-            min="0"
-            max="99"
+            type="number" min="0" max="99"
             value={scoreB}
             disabled={isVerrouille}
             onChange={e => handleChange(e.target.value, setScoreB, scoreA, false)}
-            className="w-11 h-11 rounded-full border-2 border-dashed border-gray-400 dark:border-gray-600 text-center bg-transparent text-lg font-bold focus:border-solid focus:border-blue-500 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed dark:text-white"
+            className="w-12 h-12 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:border-solid focus:border-blue-500 focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed"
           />
         </div>
 
-        {/* Équipe B */}
-        <div className="flex flex-col items-center flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl mb-1">
-            {match.equipe_b.split(' ')[0]}
-          </div>
-          <span className="text-xs text-center text-gray-700 dark:text-gray-300 font-medium truncate w-full text-center">
-            {match.equipe_b.split(' ').slice(1).join(' ')}
-          </span>
-        </div>
+        <TeamBlock fullName={match.equipe_b} lang={lang} />
       </div>
     </div>
   )
 }
 
-// Card pour les matchs passés — score réel + prono grisé + bordure colorée
+// ── Card matchs passés ───────────────────────────────────────────────────────
 export function MatchCardPasse({ match, lang }) {
-  const borderClass = getBorderClass(match)
+  const resultat = getResultat(match)
+  const style = resultStyles[resultat]
 
   return (
-    <div className={`bg-white dark:bg-gray-900 rounded-2xl border-2 ${borderClass} p-4 shadow-sm`}>
-      {/* Ligne principale : équipe A | score réel | équipe B */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Équipe A */}
-        <div className="flex flex-col items-center flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl mb-1">
-            {match.equipe_a.split(' ')[0]}
-          </div>
-          <span className="text-xs text-center text-gray-700 dark:text-gray-300 font-medium truncate w-full text-center">
-            {match.equipe_a.split(' ').slice(1).join(' ')}
-          </span>
-        </div>
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 overflow-hidden">
+      {/* Barre colorée en haut selon résultat */}
+      <div className={`h-1 w-full ${style.bar}`} />
 
-        {/* Score réel en grand */}
-        <div className="flex flex-col items-center flex-shrink-0 gap-1">
-          <div className="flex items-center gap-2">
-            <span className="text-3xl font-bold text-gray-900 dark:text-white">{match.score_reel_a}</span>
-            <span className="text-gray-400 dark:text-gray-500 font-bold text-xl">—</span>
-            <span className="text-3xl font-bold text-gray-900 dark:text-white">{match.score_reel_b}</span>
-          </div>
+      <div className="p-4">
+        {/* Équipes + score */}
+        <div className="flex items-center gap-3">
+          <TeamBlock fullName={match.equipe_a} lang={lang} />
 
-          {/* Prono du user en dessous, grisé */}
-          {match.prono_id ? (
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="w-7 h-7 rounded-md border border-gray-300 dark:border-gray-600 flex items-center justify-center text-sm font-semibold text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800">
-                {match.score_predit_a}
+          {/* Score réel + prono */}
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            {/* Score réel */}
+            <div className="flex items-center gap-2">
+              <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+                {match.score_reel_a}
               </span>
-              <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
-              <span className="w-7 h-7 rounded-md border border-gray-300 dark:border-gray-600 flex items-center justify-center text-sm font-semibold text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800">
-                {match.score_predit_b}
+              <span className="text-slate-300 dark:text-slate-600 font-bold">—</span>
+              <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+                {match.score_reel_b}
               </span>
             </div>
-          ) : (
-            <span className="text-xs text-gray-400 dark:text-gray-600 mt-1">{t(lang, 'noProno')}</span>
-          )}
 
-          {match.points_obtenus != null && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">{match.points_obtenus} pts</span>
-          )}
-        </div>
+            {/* Prono grisé */}
+            {match.prono_id ? (
+              <div className="flex items-center gap-1.5">
+                <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                  {match.score_predit_a}
+                </span>
+                <span className="text-slate-200 dark:text-slate-700 text-xs">—</span>
+                <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                  {match.score_predit_b}
+                </span>
+              </div>
+            ) : (
+              <span className="text-xs text-slate-400 dark:text-slate-600">{t(lang, 'noProno')}</span>
+            )}
 
-        {/* Équipe B */}
-        <div className="flex flex-col items-center flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl mb-1">
-            {match.equipe_b.split(' ')[0]}
+            {/* Badge points */}
+            {match.points_obtenus != null && (
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${style.badge}`}>
+                +{match.points_obtenus} pts
+              </span>
+            )}
           </div>
-          <span className="text-xs text-center text-gray-700 dark:text-gray-300 font-medium truncate w-full text-center">
-            {match.equipe_b.split(' ').slice(1).join(' ')}
-          </span>
+
+          <TeamBlock fullName={match.equipe_b} lang={lang} />
         </div>
       </div>
     </div>
