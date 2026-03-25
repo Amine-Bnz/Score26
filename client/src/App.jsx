@@ -1,35 +1,50 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState, useEffect } from 'react'
 import './App.css'
+import Header from './components/Header'
+import Navbar from './components/Navbar'
+import Onboarding from './pages/Onboarding'
+import MatchsAvenir from './pages/MatchsAvenir'
+import MatchsPasses from './pages/MatchsPasses'
+import Profil from './pages/Profil'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [userId, setUserId] = useState(null)
+  const [page,   setPage]   = useState('avenir') // 'avenir' | 'passes' | 'profil'
+  const [theme,  setTheme]  = useState('dark')
+  const [lang,   setLang]   = useState('fr')
+
+  // Récupération de l'identité persistée en localStorage
+  useEffect(() => {
+    const id = localStorage.getItem('score26_user_id')
+    if (id) setUserId(id)
+  }, [])
+
+  // Application du thème via la classe CSS sur <html>
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [theme])
+
+  // Onboarding si pas encore de compte
+  if (!userId) {
+    return <Onboarding lang={lang} onComplete={id => setUserId(id)} />
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div className="min-h-screen max-w-md mx-auto relative">
+      <Header
+        lang={lang}
+        onLangToggle={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
+        theme={theme}
+        onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+      />
+
+      <main className="pb-20 px-4 pt-4">
+        {page === 'avenir' && <MatchsAvenir userId={userId} lang={lang} />}
+        {page === 'passes' && <MatchsPasses userId={userId} lang={lang} />}
+        {page === 'profil' && <Profil       userId={userId} lang={lang} />}
+      </main>
+
+      <Navbar page={page} onNavigate={setPage} />
+    </div>
   )
 }
-
-export default App
