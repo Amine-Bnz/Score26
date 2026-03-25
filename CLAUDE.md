@@ -122,3 +122,27 @@ Pas de pari, pas de récompense réelle.
 - Notifications push
 - Classement global des users
 - Déploiement (à décider)
+
+## Mode de travail
+
+- Avant de coder une étape : décris ce que tu vas faire en termes simples
+- Après chaque étape : explique ce que tu viens de faire en termes simples
+- Une étape à la fois, jamais tout d'un coup
+- Si tu crées un nouveau fichier : explique son rôle en une phrase
+- Si tu utilises un concept technique : explique-le simplement
+
+## Documentation
+
+Maintiens un fichier JOURNAL.md à la racine du projet.
+À chaque étape complétée, ajoute une entrée avec :
+- Ce qui a été fait
+- Les fichiers créés ou modifiés
+- Les décisions techniques prises et pourquoi
+- Ce qui reste à faire
+
+Format :
+### [date] — [nom de l'étape]
+**Fait :** ...
+**Fichiers :** ...
+**Décisions :** ...
+**Suivant :** ...
