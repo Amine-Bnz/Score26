@@ -243,6 +243,53 @@ Depuis la page Profil, l'user peut choisir parmi **5 styles DiceBear** (bottts, 
 
 ---
 
+## Scope pré-déploiement (v2.1)
+
+Travaux à effectuer avant la mise en production. Validé le 2026-03-27.
+
+### 1. Polish interface
+
+- **Séparateurs de groupe** dans "Matchs à venir" : afficher un bandeau "Groupe A", "Groupe B"… entre les cards pour faciliter la lecture
+- **Tri matchs passés** : du plus récent au plus ancien (actuellement du plus ancien au plus récent)
+- **États vides** : message explicite quand la liste "à venir" ou "passés" est vide
+- **Score total à 0** : afficher "0 pt" dans le profil même si l'user n'a encore aucun point (actuellement vide/absent)
+
+### 2. Robustesse — validation pseudo
+
+- **Longueur max 20 caractères** : vérification côté serveur (route POST /api/users) ET côté client (input maxLength + message d'erreur)
+- **Caractères autorisés** : lettres, chiffres, tirets, underscores uniquement — regex `/^[a-zA-Z0-9_-]+$/` — refus des caractères spéciaux, espaces, accents
+- Règles appliquées côté serveur en priorité, côté client pour le feedback immédiat
+
+### 3. Robustesse — rate limiting
+
+- **`express-rate-limit`** sur les routes sensibles :
+  - `POST /api/users` (création de compte) : 5 req / 15 min par IP
+  - `POST /api/push/subscribe` : 10 req / 15 min par IP
+- Réponse HTTP 429 avec message d'erreur JSON
+
+### 4. PWA — vérification offline
+
+- Vérifier que le service worker ne bloque pas les appels `/api/*` en mode offline (les requêtes réseau doivent échouer proprement, pas être interceptées et retourner un cache corrompu)
+- Si nécessaire : exclure `/api/` du cache Workbox avec `NetworkOnly` pour ces routes
+
+### 5. Sécurité
+
+- **Helmet.js** : headers HTTP sécurisés (X-Content-Type-Options, X-Frame-Options, etc.)
+- **CORS restreint en prod** : `origin` limité au domaine de l'app (actuellement ouvert à tout)
+- **Sanitisation des inputs** : trim + vérification côté serveur sur pseudo, scores (entiers 0–99)
+- **ADMIN_TOKEN** : vérifier qu'il n'est jamais exposé côté client, log d'accès admin côté serveur
+- **Variables d'environnement** : s'assurer que `.env` n'est pas dans le repo (`.gitignore`)
+
+### 6. Modale "À propos"
+
+Petite modale accessible depuis le header (icône ℹ️). Contenu :
+- Concept en 2 lignes
+- Règles de scoring : score exact = 50 pts, bonne issue = 20 pts, raté = 0 pt
+- Mention de la cote cachée (sans la dévoiler)
+- Pas de page dédiée, juste une modale légère
+
+---
+
 ## Mode de travail
 
 - Avant de coder une étape : décris ce que tu vas faire en termes simples

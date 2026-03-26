@@ -108,9 +108,24 @@ const teamNamesEN = {
   // AFC
   'Irak':       'Iraq',
   'Ouzbékistan':'Uzbekistan',
+  'Jordanie':   'Jordan',
   // OFC / playoffs
   'Nouvelle-Zélande': 'New Zealand',
   'Indonésie':  'Indonesia',
+  // Nouvelles équipes CDM 2026
+  'Afrique du Sud': 'South Africa',
+  'Haïti':      'Haiti',
+  'Paraguay':   'Paraguay',
+  'Curaçao':    'Curaçao',
+  'Cap-Vert':   'Cape Verde',
+  'Norvège':    'Norway',
+  // Équipes de barrage (noms connus après mars/avril 2026)
+  'Barrage UEFA A': 'UEFA Playoff A',
+  'Barrage UEFA B': 'UEFA Playoff B',
+  'Barrage UEFA C': 'UEFA Playoff C',
+  'Barrage UEFA D': 'UEFA Playoff D',
+  'Barrage FIFA 1': 'FIFA Playoff 1',
+  'Barrage FIFA 2': 'FIFA Playoff 2',
 }
 
 // Traduit "🇫🇷 France" → "🇫🇷 France" (FR) ou "🇫🇷 France" (EN)

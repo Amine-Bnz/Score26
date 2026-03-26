@@ -19,6 +19,7 @@ app.use('/api/matchs', require('./routes/matchs'));
 app.use('/api/pronos', require('./routes/pronos'));
 app.use('/api/sync',   require('./routes/sync'));
 app.use('/api/push',   require('./routes/push'));
+app.use('/api/admin',  require('./routes/admin'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

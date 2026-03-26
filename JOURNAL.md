@@ -221,3 +221,77 @@ Résumé des 7 axes :
 3. Redémarrer le serveur
 
 **Suivant :** Page admin — étape 8 v2
+
+---
+
+## 2026-03-26 — Session 3
+
+### Seed CDM 2026 réel (72 matchs)
+
+**Fait :**
+- `server/seed.js` : réécriture complète — 12 groupes (A–L) × 6 matchs = 72 matchs. Données officielles (tirage CDM 2026), heures converties de ET vers UTC. 6 équipes encore inconnues (barrages UEFA/FIFA) représentées par des placeholders.
+- `client/src/i18n.js` : ajout des traductions manquantes — Afrique du Sud, Haïti, Paraguay, Curaçao, Cap-Vert, Norvège, Jordanie + noms EN des équipes de barrage
+
+**Décisions :**
+- Placeholder "🏆 Barrage UEFA A/B/C/D" et "🏆 Barrage FIFA 1/2" pour les équipes encore inconnues au 26 mars 2026 (finales barrages UEFA le 31 mars)
+- À remplacer dans le seed une fois les qualifiés connus
+
+### v2 — Étape 8 : Page admin
+
+**Fait :**
+- `server/routes/admin.js` (nouveau) : routes protégées par `ADMIN_TOKEN` — `GET /api/admin/matchs` (liste complète) et `PATCH /api/admin/matchs/:id` (statut, score réel, recalcul points). Middleware `checkToken` sur chaque route.
+- `server/index.js` : montage de la route `/api/admin`
+- `client/src/pages/Admin.jsx` (nouveau) : interface React — liste des 72 matchs groupés par groupe (A–L), badge statut coloré, inputs score inline, boutons "Mettre en cours" / "Terminer" / "Recalculer". Feedback visuel 2.5s après chaque action.
+- `client/src/App.jsx` : détection de `window.location.pathname === '/admin'` → affiche `<Admin />` sans Header/Navbar
+
+**Fichiers :** `routes/admin.js` (nouveau), `index.js`, `pages/Admin.jsx` (nouveau), `App.jsx`
+
+**Décisions :**
+- Token passé en query param `?token=...` (simple, pas de gestion de session) — vérifié côté serveur à chaque requête
+- Le token `change_this_before_deploy` est explicitement rejeté → force à configurer `.env` avant usage
+- `PATCH` avec `{ statut }` seul → change uniquement le statut (pas de recalcul)
+- `PATCH` avec `{ score_reel_a, score_reel_b }` → force `statut = 'termine'` + déclenche `calculerPoints()`
+- `PATCH` avec `{ recalculer: true }` → recalcul des points sans toucher au score (correction manuelle)
+- Détection admin via `window.location.pathname` dans App.jsx (pas de react-router) — Vite sert `index.html` pour toutes les routes en dev
+
+**Pour accéder :**
+`http://localhost:5173/admin?token=VOTRE_ADMIN_TOKEN` (valeur dans `server/.env`)
+
+**Suivant :** Avatar personnalisable — étape 9 v2 (bonus, moins prioritaire)
+
+---
+
+## 2026-03-27 — Plan pré-déploiement (v2.1)
+
+**Décision :** Avatar personnalisable skippé (hors priorité). Plan pré-déploiement établi et validé.
+
+**Étapes retenues (dans l'ordre) :**
+
+1. **Polish interface**
+   - Séparateurs de groupe dans "Matchs à venir"
+   - Tri matchs passés : plus récent → plus ancien
+   - Messages état vide (liste vide)
+   - Score total à 0 dans le profil
+
+2. **Robustesse — validation pseudo**
+   - Max 20 caractères, regex `/^[a-zA-Z0-9_-]+$/`
+   - Côté serveur (source de vérité) + côté client (feedback immédiat)
+
+3. **Robustesse — rate limiting**
+   - `express-rate-limit` sur POST /api/users et POST /api/push/subscribe
+   - 5 req/15min et 10 req/15min par IP
+
+4. **PWA — vérification offline**
+   - Exclure `/api/*` du cache Workbox si nécessaire
+
+5. **Sécurité**
+   - Helmet.js (headers HTTP)
+   - CORS restreint en prod
+   - Sanitisation serveur (trim, types, bornes)
+   - Vérification .gitignore
+
+6. **Modale "À propos"**
+   - Icône ℹ️ dans le header → modale légère
+   - Concept + règles scoring + mention cote cachée
+
+**Suivant :** Étape 1 — Polish interface

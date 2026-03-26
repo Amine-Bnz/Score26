@@ -18,98 +18,113 @@ const seedAll = db.transaction((matchs) => {
 });
 
 // Format des dates : heure UTC stockée en base
-// Les matchs sont joués aux USA/Canada/Mexique — les heures locales varient
-// 19:00 UTC ≈ 15h00 ET | 22:00 UTC ≈ 18h00 ET | 01:00 UTC+1 ≈ 21h00 ET
+// Heures source : Yahoo Sports (heure ET = UTC-4 en été) → converties en UTC (+4h)
 //
-// ATTENTION : équipes et calendrier approximatifs basés sur les qualifications
-// connues fin 2025. À mettre à jour avec le tirage officiel si nécessaire.
+// CDM 2026 : 48 équipes, 12 groupes de 4 (A–L), 6 matchs par groupe = 72 matchs
+// Journée 3 : matchs simultanés pour équité sportive
 //
-// Format CDM 2026 : 48 équipes, 16 groupes de 3, 3 matchs par groupe = 48 matchs
-// Journée 1 : 11–17 juin | Journée 2 : 18–24 juin | Journée 3 : 25 juin–1er juillet
+// 6 équipes encore inconnues (barrages UEFA finales 31 mars 2026, barrages FIFA intercontinentaux TBD) :
+// 🏆 Barrage UEFA A/B/C/D et 🏆 Barrage FIFA 1/2 → à remplacer une fois connus
 
 const matchs = [
-  // ── GROUPE A ──────────────────────────────────────────────────────────────
-  { g:'A', j:1, a:'🇺🇸 États-Unis',  b:'🇵🇹 Portugal',       date:'2026-06-11 22:00:00' },
-  { g:'A', j:2, a:'🇺🇸 États-Unis',  b:'🇲🇱 Mali',           date:'2026-06-18 19:00:00' },
-  { g:'A', j:3, a:'🇵🇹 Portugal',    b:'🇲🇱 Mali',           date:'2026-06-25 22:00:00' },
+  // ── GROUPE A : Mexique · Afrique du Sud · Corée du Sud · Barrage UEFA D ──────
+  { g:'A', j:1, a:'🇲🇽 Mexique',         b:'🇿🇦 Afrique du Sud',  date:'2026-06-11 19:00:00' },
+  { g:'A', j:1, a:'🇰🇷 Corée du Sud',    b:'🏆 Barrage UEFA D',   date:'2026-06-12 02:00:00' },
+  { g:'A', j:2, a:'🏆 Barrage UEFA D',   b:'🇿🇦 Afrique du Sud',  date:'2026-06-18 16:00:00' },
+  { g:'A', j:2, a:'🇲🇽 Mexique',         b:'🇰🇷 Corée du Sud',    date:'2026-06-19 01:00:00' },
+  { g:'A', j:3, a:'🏆 Barrage UEFA D',   b:'🇲🇽 Mexique',         date:'2026-06-25 01:00:00' },
+  { g:'A', j:3, a:'🇿🇦 Afrique du Sud',  b:'🇰🇷 Corée du Sud',    date:'2026-06-25 01:00:00' },
 
-  // ── GROUPE B ──────────────────────────────────────────────────────────────
-  { g:'B', j:1, a:'🇨🇦 Canada',      b:'🇧🇪 Belgique',       date:'2026-06-11 19:00:00' },
-  { g:'B', j:2, a:'🇨🇦 Canada',      b:'🇲🇦 Maroc',          date:'2026-06-18 22:00:00' },
-  { g:'B', j:3, a:'🇧🇪 Belgique',    b:'🇲🇦 Maroc',          date:'2026-06-25 19:00:00' },
+  // ── GROUPE B : Canada · Barrage UEFA A · Qatar · Suisse ───────────────────
+  { g:'B', j:1, a:'🇨🇦 Canada',          b:'🏆 Barrage UEFA A',   date:'2026-06-12 19:00:00' },
+  { g:'B', j:1, a:'🇶🇦 Qatar',           b:'🇨🇭 Suisse',          date:'2026-06-13 19:00:00' },
+  { g:'B', j:2, a:'🇨🇭 Suisse',          b:'🏆 Barrage UEFA A',   date:'2026-06-18 19:00:00' },
+  { g:'B', j:2, a:'🇨🇦 Canada',          b:'🇶🇦 Qatar',           date:'2026-06-18 22:00:00' },
+  { g:'B', j:3, a:'🇨🇭 Suisse',          b:'🇨🇦 Canada',          date:'2026-06-24 19:00:00' },
+  { g:'B', j:3, a:'🏆 Barrage UEFA A',   b:'🇶🇦 Qatar',           date:'2026-06-24 19:00:00' },
 
-  // ── GROUPE C ──────────────────────────────────────────────────────────────
-  { g:'C', j:1, a:'🇲🇽 Mexique',     b:'🇦🇹 Autriche',       date:'2026-06-12 22:00:00' },
-  { g:'C', j:2, a:'🇲🇽 Mexique',     b:'🇸🇳 Sénégal',        date:'2026-06-19 19:00:00' },
-  { g:'C', j:3, a:'🇦🇹 Autriche',    b:'🇸🇳 Sénégal',        date:'2026-06-26 22:00:00' },
+  // ── GROUPE C : Brésil · Maroc · Haïti · Écosse ──────────────────────────
+  { g:'C', j:1, a:'🇧🇷 Brésil',          b:'🇲🇦 Maroc',           date:'2026-06-13 22:00:00' },
+  { g:'C', j:1, a:'🇭🇹 Haïti',           b:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse',          date:'2026-06-14 01:00:00' },
+  { g:'C', j:2, a:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse',         b:'🇲🇦 Maroc',           date:'2026-06-19 22:00:00' },
+  { g:'C', j:2, a:'🇧🇷 Brésil',          b:'🇭🇹 Haïti',           date:'2026-06-20 01:00:00' },
+  { g:'C', j:3, a:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse',         b:'🇧🇷 Brésil',          date:'2026-06-24 22:00:00' },
+  { g:'C', j:3, a:'🇲🇦 Maroc',           b:'🇭🇹 Haïti',           date:'2026-06-24 22:00:00' },
 
-  // ── GROUPE D ──────────────────────────────────────────────────────────────
-  { g:'D', j:1, a:'🇦🇷 Argentine',   b:'🇫🇷 France',         date:'2026-06-12 19:00:00' },
-  { g:'D', j:2, a:'🇦🇷 Argentine',   b:'🇯🇵 Japon',          date:'2026-06-19 22:00:00' },
-  { g:'D', j:3, a:'🇫🇷 France',      b:'🇯🇵 Japon',          date:'2026-06-26 19:00:00' },
+  // ── GROUPE D : États-Unis · Paraguay · Australie · Barrage UEFA C ─────────
+  { g:'D', j:1, a:'🇺🇸 États-Unis',      b:'🇵🇾 Paraguay',        date:'2026-06-13 01:00:00' },
+  { g:'D', j:1, a:'🇦🇺 Australie',       b:'🏆 Barrage UEFA C',   date:'2026-06-13 04:00:00' },
+  { g:'D', j:2, a:'🏆 Barrage UEFA C',   b:'🇵🇾 Paraguay',        date:'2026-06-19 04:00:00' },
+  { g:'D', j:2, a:'🇺🇸 États-Unis',      b:'🇦🇺 Australie',       date:'2026-06-19 19:00:00' },
+  { g:'D', j:3, a:'🏆 Barrage UEFA C',   b:'🇺🇸 États-Unis',      date:'2026-06-26 02:00:00' },
+  { g:'D', j:3, a:'🇵🇾 Paraguay',        b:'🇦🇺 Australie',       date:'2026-06-26 02:00:00' },
 
-  // ── GROUPE E ──────────────────────────────────────────────────────────────
-  { g:'E', j:1, a:'🇧🇷 Brésil',      b:'🇩🇪 Allemagne',      date:'2026-06-13 22:00:00' },
-  { g:'E', j:2, a:'🇧🇷 Brésil',      b:'🇸🇦 Arabie Saoudite',date:'2026-06-20 19:00:00' },
-  { g:'E', j:3, a:'🇩🇪 Allemagne',   b:'🇸🇦 Arabie Saoudite',date:'2026-06-27 22:00:00' },
+  // ── GROUPE E : Allemagne · Curaçao · Côte d'Ivoire · Équateur ─────────────
+  { g:'E', j:1, a:'🇩🇪 Allemagne',       b:"🇨🇼 Curaçao",         date:'2026-06-14 17:00:00' },
+  { g:'E', j:1, a:"🇨🇮 Côte d'Ivoire",  b:'🇪🇨 Équateur',        date:'2026-06-14 23:00:00' },
+  { g:'E', j:2, a:'🇩🇪 Allemagne',       b:"🇨🇮 Côte d'Ivoire",  date:'2026-06-20 20:00:00' },
+  { g:'E', j:2, a:'🇪🇨 Équateur',        b:"🇨🇼 Curaçao",         date:'2026-06-21 00:00:00' },
+  { g:'E', j:3, a:"🇨🇼 Curaçao",         b:"🇨🇮 Côte d'Ivoire",  date:'2026-06-25 20:00:00' },
+  { g:'E', j:3, a:'🇪🇨 Équateur',        b:'🇩🇪 Allemagne',       date:'2026-06-25 20:00:00' },
 
-  // ── GROUPE F ──────────────────────────────────────────────────────────────
-  { g:'F', j:1, a:'🇨🇴 Colombie',    b:'🇪🇸 Espagne',        date:'2026-06-13 19:00:00' },
-  { g:'F', j:2, a:'🇨🇴 Colombie',    b:'🇦🇺 Australie',      date:'2026-06-20 22:00:00' },
-  { g:'F', j:3, a:'🇪🇸 Espagne',     b:'🇦🇺 Australie',      date:'2026-06-27 19:00:00' },
+  // ── GROUPE F : Pays-Bas · Japon · Barrage UEFA B · Tunisie ────────────────
+  { g:'F', j:1, a:'🇳🇱 Pays-Bas',        b:'🇯🇵 Japon',           date:'2026-06-14 20:00:00' },
+  { g:'F', j:1, a:'🏆 Barrage UEFA B',   b:'🇹🇳 Tunisie',         date:'2026-06-15 02:00:00' },
+  { g:'F', j:2, a:'🇳🇱 Pays-Bas',        b:'🏆 Barrage UEFA B',   date:'2026-06-20 17:00:00' },
+  { g:'F', j:2, a:'🇹🇳 Tunisie',         b:'🇯🇵 Japon',           date:'2026-06-20 04:00:00' },
+  { g:'F', j:3, a:'🇯🇵 Japon',           b:'🏆 Barrage UEFA B',   date:'2026-06-25 23:00:00' },
+  { g:'F', j:3, a:'🇹🇳 Tunisie',         b:'🇳🇱 Pays-Bas',        date:'2026-06-25 23:00:00' },
 
-  // ── GROUPE G ──────────────────────────────────────────────────────────────
-  { g:'G', j:1, a:'🇺🇾 Uruguay',     b:'🇳🇱 Pays-Bas',       date:'2026-06-14 22:00:00' },
-  { g:'G', j:2, a:'🇺🇾 Uruguay',     b:'🇨🇲 Cameroun',       date:'2026-06-21 19:00:00' },
-  { g:'G', j:3, a:'🇳🇱 Pays-Bas',    b:'🇨🇲 Cameroun',       date:'2026-06-28 22:00:00' },
+  // ── GROUPE G : Belgique · Égypte · Iran · Nouvelle-Zélande ───────────────
+  { g:'G', j:1, a:'🇧🇪 Belgique',        b:'🇪🇬 Égypte',          date:'2026-06-15 19:00:00' },
+  { g:'G', j:1, a:'🇮🇷 Iran',            b:'🇳🇿 Nouvelle-Zélande',date:'2026-06-16 01:00:00' },
+  { g:'G', j:2, a:'🇧🇪 Belgique',        b:'🇮🇷 Iran',            date:'2026-06-21 19:00:00' },
+  { g:'G', j:2, a:'🇳🇿 Nouvelle-Zélande',b:'🇪🇬 Égypte',          date:'2026-06-22 01:00:00' },
+  { g:'G', j:3, a:'🇪🇬 Égypte',          b:'🇮🇷 Iran',            date:'2026-06-27 03:00:00' },
+  { g:'G', j:3, a:'🇳🇿 Nouvelle-Zélande',b:'🇧🇪 Belgique',        date:'2026-06-27 03:00:00' },
 
-  // ── GROUPE H ──────────────────────────────────────────────────────────────
-  { g:'H', j:1, a:'🇪🇨 Équateur',    b:'🇮🇹 Italie',         date:'2026-06-14 19:00:00' },
-  { g:'H', j:2, a:'🇪🇨 Équateur',    b:'🇮🇷 Iran',           date:'2026-06-21 22:00:00' },
-  { g:'H', j:3, a:'🇮🇹 Italie',      b:'🇮🇷 Iran',           date:'2026-06-28 19:00:00' },
+  // ── GROUPE H : Espagne · Cap-Vert · Arabie Saoudite · Uruguay ────────────
+  { g:'H', j:1, a:'🇪🇸 Espagne',         b:'🇨🇻 Cap-Vert',        date:'2026-06-15 16:00:00' },
+  { g:'H', j:1, a:'🇸🇦 Arabie Saoudite', b:'🇺🇾 Uruguay',         date:'2026-06-15 22:00:00' },
+  { g:'H', j:2, a:'🇪🇸 Espagne',         b:'🇸🇦 Arabie Saoudite', date:'2026-06-21 16:00:00' },
+  { g:'H', j:2, a:'🇺🇾 Uruguay',         b:'🇨🇻 Cap-Vert',        date:'2026-06-21 22:00:00' },
+  { g:'H', j:3, a:'🇨🇻 Cap-Vert',        b:'🇸🇦 Arabie Saoudite', date:'2026-06-27 00:00:00' },
+  { g:'H', j:3, a:'🇺🇾 Uruguay',         b:'🇪🇸 Espagne',         date:'2026-06-27 00:00:00' },
 
-  // ── GROUPE I ──────────────────────────────────────────────────────────────
-  { g:'I', j:1, a:'🇻🇪 Venezuela',   b:'🇵🇱 Pologne',        date:'2026-06-15 22:00:00' },
-  { g:'I', j:2, a:'🇻🇪 Venezuela',   b:'🇳🇬 Nigeria',        date:'2026-06-22 19:00:00' },
-  { g:'I', j:3, a:'🇵🇱 Pologne',     b:'🇳🇬 Nigeria',        date:'2026-06-29 22:00:00' },
+  // ── GROUPE I : France · Sénégal · Norvège · Barrage FIFA 2 ────────────────
+  { g:'I', j:1, a:'🇫🇷 France',          b:'🇸🇳 Sénégal',         date:'2026-06-16 19:00:00' },
+  { g:'I', j:1, a:'🏆 Barrage FIFA 2',   b:'🇳🇴 Norvège',         date:'2026-06-16 22:00:00' },
+  { g:'I', j:2, a:'🇫🇷 France',          b:'🏆 Barrage FIFA 2',   date:'2026-06-22 21:00:00' },
+  { g:'I', j:2, a:'🇳🇴 Norvège',         b:'🇸🇳 Sénégal',         date:'2026-06-23 00:00:00' },
+  { g:'I', j:3, a:'🇳🇴 Norvège',         b:'🇫🇷 France',          date:'2026-06-26 19:00:00' },
+  { g:'I', j:3, a:'🇸🇳 Sénégal',         b:'🏆 Barrage FIFA 2',   date:'2026-06-26 19:00:00' },
 
-  // ── GROUPE J ──────────────────────────────────────────────────────────────
-  { g:'J', j:1, a:'🇵🇦 Panama',      b:'🇭🇷 Croatie',        date:'2026-06-15 19:00:00' },
-  { g:'J', j:2, a:'🇵🇦 Panama',      b:'🇰🇷 Corée du Sud',   date:'2026-06-22 22:00:00' },
-  { g:'J', j:3, a:'🇭🇷 Croatie',     b:'🇰🇷 Corée du Sud',   date:'2026-06-29 19:00:00' },
+  // ── GROUPE J : Argentine · Algérie · Autriche · Jordanie ─────────────────
+  { g:'J', j:1, a:'🇦🇹 Autriche',        b:'🇯🇴 Jordanie',        date:'2026-06-16 04:00:00' },
+  { g:'J', j:1, a:'🇦🇷 Argentine',       b:'🇩🇿 Algérie',         date:'2026-06-17 01:00:00' },
+  { g:'J', j:2, a:'🇦🇷 Argentine',       b:'🇦🇹 Autriche',        date:'2026-06-22 17:00:00' },
+  { g:'J', j:2, a:'🇯🇴 Jordanie',        b:'🇩🇿 Algérie',         date:'2026-06-23 03:00:00' },
+  { g:'J', j:3, a:'🇯🇴 Jordanie',        b:'🇦🇷 Argentine',       date:'2026-06-28 02:00:00' },
+  { g:'J', j:3, a:'🇩🇿 Algérie',         b:'🇦🇹 Autriche',        date:'2026-06-28 02:00:00' },
 
-  // ── GROUPE K ──────────────────────────────────────────────────────────────
-  { g:'K', j:1, a:'🇨🇷 Costa Rica',  b:'🇩🇰 Danemark',       date:'2026-06-16 22:00:00' },
-  { g:'K', j:2, a:'🇨🇷 Costa Rica',  b:'🇪🇬 Égypte',         date:'2026-06-23 19:00:00' },
-  { g:'K', j:3, a:'🇩🇰 Danemark',    b:'🇪🇬 Égypte',         date:'2026-06-30 22:00:00' },
+  // ── GROUPE K : Portugal · Barrage FIFA 1 · Ouzbékistan · Colombie ─────────
+  { g:'K', j:1, a:'🇵🇹 Portugal',        b:'🏆 Barrage FIFA 1',   date:'2026-06-17 17:00:00' },
+  { g:'K', j:1, a:'🇺🇿 Ouzbékistan',     b:'🇨🇴 Colombie',        date:'2026-06-18 02:00:00' },
+  { g:'K', j:2, a:'🇵🇹 Portugal',        b:'🇺🇿 Ouzbékistan',     date:'2026-06-23 17:00:00' },
+  { g:'K', j:2, a:'🇨🇴 Colombie',        b:'🏆 Barrage FIFA 1',   date:'2026-06-24 02:00:00' },
+  { g:'K', j:3, a:'🇨🇴 Colombie',        b:'🇵🇹 Portugal',        date:'2026-06-27 23:30:00' },
+  { g:'K', j:3, a:'🏆 Barrage FIFA 1',   b:'🇺🇿 Ouzbékistan',     date:'2026-06-27 23:30:00' },
 
-  // ── GROUPE L ──────────────────────────────────────────────────────────────
-  { g:'L', j:1, a:'🇭🇳 Honduras',    b:'🇷🇸 Serbie',         date:'2026-06-16 19:00:00' },
-  { g:'L', j:2, a:'🇭🇳 Honduras',    b:'🇶🇦 Qatar',          date:'2026-06-23 22:00:00' },
-  { g:'L', j:3, a:'🇷🇸 Serbie',      b:'🇶🇦 Qatar',          date:'2026-06-30 19:00:00' },
-
-  // ── GROUPE M ──────────────────────────────────────────────────────────────
-  { g:'M', j:1, a:'🇧🇴 Bolivie',     b:'🇨🇭 Suisse',         date:'2026-06-17 19:00:00' },
-  { g:'M', j:2, a:'🇧🇴 Bolivie',     b:"🇨🇮 Côte d'Ivoire",  date:'2026-06-24 19:00:00' },
-  { g:'M', j:3, a:'🇨🇭 Suisse',      b:"🇨🇮 Côte d'Ivoire",  date:'2026-07-01 19:00:00' },
-
-  // ── GROUPE N ──────────────────────────────────────────────────────────────
-  { g:'N', j:1, a:'🇮🇩 Indonésie',   b:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre',    date:'2026-06-17 22:00:00' },
-  { g:'N', j:2, a:'🇮🇩 Indonésie',   b:'🇩🇿 Algérie',        date:'2026-06-24 22:00:00' },
-  { g:'N', j:3, a:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre', b:'🇩🇿 Algérie',        date:'2026-07-01 22:00:00' },
-
-  // ── GROUPE O ──────────────────────────────────────────────────────────────
-  { g:'O', j:1, a:'🇳🇿 Nouvelle-Zélande', b:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse',   date:'2026-06-17 01:00:00' },
-  { g:'O', j:2, a:'🇳🇿 Nouvelle-Zélande', b:'🇹🇳 Tunisie',    date:'2026-06-24 01:00:00' },
-  { g:'O', j:3, a:'🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse',      b:'🇹🇳 Tunisie',    date:'2026-07-01 01:00:00' },
-
-  // ── GROUPE P ──────────────────────────────────────────────────────────────
-  { g:'P', j:1, a:'🇹🇷 Turquie',     b:'🇮🇶 Irak',           date:'2026-06-18 01:00:00' },
-  { g:'P', j:2, a:'🇹🇷 Turquie',     b:'🇺🇿 Ouzbékistan',    date:'2026-06-25 01:00:00' },
-  { g:'P', j:3, a:'🇮🇶 Irak',        b:'🇺🇿 Ouzbékistan',    date:'2026-07-02 01:00:00' },
+  // ── GROUPE L : Angleterre · Croatie · Ghana · Panama ─────────────────────
+  { g:'L', j:1, a:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre',      b:'🇭🇷 Croatie',         date:'2026-06-17 20:00:00' },
+  { g:'L', j:1, a:'🇬🇭 Ghana',           b:'🇵🇦 Panama',          date:'2026-06-17 23:00:00' },
+  { g:'L', j:2, a:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre',      b:'🇬🇭 Ghana',           date:'2026-06-23 20:00:00' },
+  { g:'L', j:2, a:'🇵🇦 Panama',          b:'🇭🇷 Croatie',         date:'2026-06-23 23:00:00' },
+  { g:'L', j:3, a:'🇵🇦 Panama',          b:'🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre',      date:'2026-06-27 21:00:00' },
+  { g:'L', j:3, a:'🇭🇷 Croatie',         b:'🇬🇭 Ghana',           date:'2026-06-27 21:00:00' },
 ];
 
 seedAll(matchs);
 
-console.log(`Seed terminé — ${matchs.length} matchs insérés (16 groupes × 3 matchs).`);
+console.log(`Seed terminé — ${matchs.length} matchs insérés (12 groupes × 6 matchs, CDM 2026 réel).`);
 db.close();
