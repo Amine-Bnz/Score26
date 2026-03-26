@@ -12,8 +12,10 @@ export default function MatchsAvenir({ userId, lang }) {
 
   function charger() {
     return getMatchs(userId).then(data => {
+      // En cours : statut explicitement 'en_cours'
       setEnCours(data.filter(m => m.statut === 'en_cours'))
-      setAVenir(data.filter(m => m.statut === 'a_venir'))
+      // À venir : pas encore de score réel ET pas en cours
+      setAVenir(data.filter(m => m.score_reel_a == null && m.statut !== 'en_cours'))
       setLoading(false)
     })
   }

@@ -11,7 +11,8 @@ export default function MatchsPasses({ userId, lang }) {
 
   function charger() {
     return getMatchs(userId).then(data => {
-      setMatchs(data.filter(m => m.statut === 'termine').reverse())
+      // Terminés : score réel renseigné (source de vérité), du plus récent au plus ancien
+      setMatchs(data.filter(m => m.score_reel_a != null).reverse())
       setLoading(false)
     })
   }

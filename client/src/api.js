@@ -29,3 +29,26 @@ export async function upsertProno({ user_id, match_id, score_predit_a, score_pre
   })
   return res.json()
 }
+
+export async function getVapidPublicKey() {
+  const res = await fetch(`${BASE}/push/vapid-public-key`)
+  return res.json()
+}
+
+export async function subscribePush({ user_id, subscription }) {
+  const res = await fetch(`${BASE}/push/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id, subscription }),
+  })
+  return res.json()
+}
+
+export async function unsubscribePush({ endpoint }) {
+  const res = await fetch(`${BASE}/push/unsubscribe`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint }),
+  })
+  return res.json()
+}

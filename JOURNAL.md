@@ -192,3 +192,32 @@ Résumé des 7 axes :
 - `savedTimerRef` pour annuler le timer flash si l'user retape rapidement
 
 **Suivant :** Notifications push (Web Push API, VAPID) — étape 7 v2
+
+### v2 — Étape 7 : Notifications push
+
+**Fait :**
+- `server/generate-vapid.js` : script one-shot pour générer les clés VAPID → sortie console à coller dans `.env`
+- `server/database.js` : deux nouvelles tables — `push_subscriptions` (endpoint, p256dh, auth, user_id) et `notifs_envoyees` (anti-doublon user_id × match_id)
+- `server/routes/push.js` : 3 routes — `GET /api/push/vapid-public-key` (clé publique), `POST /subscribe`, `DELETE /unsubscribe`
+- `server/services/pushNotifications.js` : `envoyerNotifAvantMatch()` — requête SQL ciblant les (user, match) sans prono dans la fenêtre [55-65min], envoi via `web-push`, suppression des subscriptions expirées (HTTP 410/404)
+- `server/index.js` : route push montée + job 5min (actif si VAPID_PUBLIC_KEY configurée)
+- `server/.env` : placeholders VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL
+- `client/public/push-sw.js` : gestionnaire `push` + `notificationclick` dans le SW (fichier public importé via `importScripts`)
+- `client/vite.config.js` : `importScripts: ['/push-sw.js']` dans la config workbox
+- `client/src/api.js` : fonctions `getVapidPublicKey`, `subscribePush`, `unsubscribePush`
+- `client/src/pages/Profil.jsx` : état `notifStatus` (checking/default/granted/denied/unsupported/subscribing), logique subscribe/unsubscribe via `pushManager`, composant `NotifButton`
+
+**Fichiers :** `generate-vapid.js` (nouveau), `database.js`, `routes/push.js` (nouveau), `services/pushNotifications.js` (nouveau), `index.js`, `.env`, `public/push-sw.js` (nouveau), `vite.config.js`, `api.js`, `Profil.jsx`, `i18n.js`
+
+**Décisions :**
+- `push-sw.js` dans `public/` + `importScripts` plutôt que passer en `injectManifest` : moins de changements, pas de dépendance workbox à gérer côté client
+- Fenêtre [55-65min] pour les notifs : le job tourne toutes les 5min, fenêtre de 10min → chaque match est détecté 2 fois maximum. La table `notifs_envoyees` garantit qu'une seule notif est envoyée par (user, match)
+- Gestion HTTP 410/404 : subscription expirée (navigateur révoqué) → supprimée proprement de la BDD
+- `notif-tag: 'score26-notif'` dans le SW : les notifs consécutives du même match ne s'accumulent pas
+
+**Pour activer :**
+1. `cd server && npm install web-push`
+2. `node generate-vapid.js` → coller les clés dans `.env`
+3. Redémarrer le serveur
+
+**Suivant :** Page admin — étape 8 v2

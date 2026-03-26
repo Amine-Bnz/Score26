@@ -32,8 +32,10 @@ export default defineConfig({
         ],
       },
       // Service worker : met en cache tous les assets au build
+      // + importe le gestionnaire push (push-sw.js servi depuis /public)
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg}'],
+        importScripts: ['/push-sw.js'],
       },
     }),
   ],

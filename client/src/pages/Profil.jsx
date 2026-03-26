@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
-import { getUser } from '../api'
+import { getUser, getVapidPublicKey, subscribePush, unsubscribePush } from '../api'
 import { t } from '../i18n'
+
+// Convertit la clé VAPID base64url en Uint8Array (requis par pushManager.subscribe)
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = atob(base64)
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)))
+}
 
 function avatarSvgUrl(seed) {
   return `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(seed)}`
@@ -10,15 +18,84 @@ function avatarPngUrl(seed) {
   return `https://api.dicebear.com/9.x/bottts/png?seed=${encodeURIComponent(seed)}&size=96`
 }
 
+// Statuts possibles du bouton de notification
+// 'checking'     — on vérifie l'état au montage
+// 'unsupported'  — le navigateur ne supporte pas les notifs push
+// 'default'      — pas encore demandé
+// 'granted'      — abonné et actif
+// 'denied'       — l'user a refusé (irréversible sauf reset navigateur)
+// 'subscribing'  — en cours d'abonnement
+
 export default function Profil({ userId, lang }) {
-  const [user, setUser]       = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [sharing, setSharing] = useState(false)
-  const shareCardRef          = useRef(null)
+  const [user, setUser]           = useState(null)
+  const [loading, setLoading]     = useState(true)
+  const [sharing, setSharing]     = useState(false)
+  const [notifStatus, setNotifStatus] = useState('checking')
+  const shareCardRef              = useRef(null)
 
   useEffect(() => {
     getUser(userId).then(data => { setUser(data); setLoading(false) })
   }, [userId])
+
+  // Vérifie l'état des notifications au montage
+  useEffect(() => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      setNotifStatus('unsupported')
+      return
+    }
+    if (Notification.permission === 'denied') {
+      setNotifStatus('denied')
+      return
+    }
+    // Vérifie si déjà abonné via le Service Worker
+    navigator.serviceWorker.ready.then(reg => {
+      reg.pushManager.getSubscription().then(sub => {
+        setNotifStatus(sub ? 'granted' : 'default')
+      })
+    }).catch(() => setNotifStatus('unsupported'))
+  }, [])
+
+  async function handleSubscribePush() {
+    if (notifStatus === 'subscribing') return
+    setNotifStatus('subscribing')
+    try {
+      // 1. Demander la permission navigateur
+      const perm = await Notification.requestPermission()
+      if (perm !== 'granted') { setNotifStatus('denied'); return }
+
+      // 2. Récupérer la clé publique VAPID depuis le backend
+      const { publicKey, error } = await getVapidPublicKey()
+      if (error) { setNotifStatus('default'); return }
+
+      // 3. S'abonner via le Service Worker
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      })
+
+      // 4. Envoyer la subscription au backend
+      await subscribePush({ user_id: userId, subscription: sub.toJSON() })
+      setNotifStatus('granted')
+    } catch (err) {
+      console.error('[push subscribe]', err)
+      setNotifStatus('default')
+    }
+  }
+
+  async function handleUnsubscribePush() {
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const sub = await reg.pushManager.getSubscription()
+      if (sub) {
+        await unsubscribePush({ endpoint: sub.endpoint })
+        await sub.unsubscribe()
+      }
+      setNotifStatus('default')
+    } catch (err) {
+      console.error('[push unsubscribe]', err)
+    }
+  }
 
   async function handleShare() {
     if (!shareCardRef.current || sharing) return
@@ -79,16 +156,57 @@ export default function Profil({ userId, lang }) {
       <button
         onClick={handleShare}
         disabled={sharing}
-        className="w-full py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20"
+        className="w-full py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 active:scale-95 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20"
       >
         {sharing ? '...' : t(lang, 'share')}
       </button>
+
+      {/* Bouton notifications push */}
+      <NotifButton status={notifStatus} lang={lang}
+        onEnable={handleSubscribePush}
+        onDisable={handleUnsubscribePush}
+      />
 
       {/* Card de partage hors-écran */}
       <div ref={shareCardRef} style={{ position: 'absolute', left: '-9999px', top: 0 }}>
         <ShareCard user={user} stats={stats} avatarUrl={avatarPngUrl(user.avatar_seed)} lang={lang} />
       </div>
     </div>
+  )
+}
+
+// Bouton de gestion des notifications push
+function NotifButton({ status, lang, onEnable, onDisable }) {
+  if (status === 'checking' || status === 'unsupported') return null
+
+  if (status === 'denied') {
+    return (
+      <p className="text-xs text-slate-400 dark:text-slate-600 text-center">
+        {t(lang, 'notifsBlocked')}
+      </p>
+    )
+  }
+
+  if (status === 'granted') {
+    return (
+      <button
+        onClick={onDisable}
+        className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 active:scale-95 text-slate-600 dark:text-slate-300 font-semibold text-sm transition-all flex items-center justify-center gap-2"
+      >
+        <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+        {t(lang, 'disableNotifs')}
+      </button>
+    )
+  }
+
+  return (
+    <button
+      onClick={onEnable}
+      disabled={status === 'subscribing'}
+      className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 active:scale-95 text-slate-600 dark:text-slate-300 font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {status === 'subscribing' ? '...' : t(lang, 'enableNotifs')}
+    </button>
   )
 }
 

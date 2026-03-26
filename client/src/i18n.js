@@ -19,6 +19,10 @@ const translations = {
     share: 'Partager',
     liveSection: 'En direct',
     myProno: 'Mon prono',
+    enableNotifs: 'Activer les notifications',
+    disableNotifs: 'Notifications activées',
+    notifsBlocked: 'Notifications bloquées',
+    notifsUnsupported: 'Notifications non disponibles',
   },
   en: {
     welcome: 'Welcome to score26',
@@ -40,6 +44,10 @@ const translations = {
     share: 'Share',
     liveSection: 'Live',
     myProno: 'My prediction',
+    enableNotifs: 'Enable notifications',
+    disableNotifs: 'Notifications enabled',
+    notifsBlocked: 'Notifications blocked',
+    notifsUnsupported: 'Notifications unavailable',
   },
 }
 

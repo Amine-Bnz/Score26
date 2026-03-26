@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(node -e \":*)",
-      "Bash(node seed.js)"
+      "Bash(node seed.js)",
+      "Bash(node -e \"require\\(''web-push''\\); console.log\\(''ok''\\)\")"
     ]
   }
 }

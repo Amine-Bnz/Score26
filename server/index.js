@@ -6,9 +6,10 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 const db                       = require('./database');
-const { syncResultats }        = require('./services/footballData');
-const { syncLive }             = require('./services/apiFootball');
-const { calculerPoints }       = require('./scoring');
+const { syncResultats }           = require('./services/footballData');
+const { syncLive }                = require('./services/apiFootball');
+const { calculerPoints }          = require('./scoring');
+const { envoyerNotifAvantMatch }  = require('./services/pushNotifications');
 
 app.use(cors());
 app.use(express.json());
@@ -17,6 +18,7 @@ app.use('/api/users',  require('./routes/users'));
 app.use('/api/matchs', require('./routes/matchs'));
 app.use('/api/pronos', require('./routes/pronos'));
 app.use('/api/sync',   require('./routes/sync'));
+app.use('/api/push',   require('./routes/push'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
@@ -53,5 +55,18 @@ function lancerPolling() {
     console.log('Auto-sync live activé (API-Football, toutes les 3 min)');
   } else {
     console.log('Auto-sync live désactivé — configurer API_FOOTBALL_KEY dans .env');
+  }
+
+  // ── Notifications push — toutes les 5 min ─────────────────────────────────
+  // Envoie une notif 1h avant chaque match pour les users sans prono
+  const vapidPret = process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PUBLIC_KEY !== 'your_vapid_public_key';
+  if (vapidPret) {
+    setInterval(async () => {
+      try { await envoyerNotifAvantMatch(db); }
+      catch (e) { console.error('[push notif]', e.message); }
+    }, 5 * 60 * 1000);
+    console.log('Notifications push activées (VAPID, toutes les 5 min)');
+  } else {
+    console.log('Notifications push désactivées — générer les clés avec : node generate-vapid.js');
   }
 }
