@@ -1,6 +1,16 @@
-const express = require('express')
-const router  = express.Router()
-const db      = require('../database')
+const express   = require('express')
+const rateLimit = require('express-rate-limit')
+const router    = express.Router()
+const db        = require('../database')
+
+// 10 abonnements push max par IP sur 15 minutes
+const limiterPush = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de tentatives. Réessaie dans 15 minutes.' },
+})
 
 // GET /api/push/vapid-public-key — retourne la clé publique VAPID au frontend
 router.get('/vapid-public-key', (req, res) => {
@@ -13,7 +23,7 @@ router.get('/vapid-public-key', (req, res) => {
 
 // POST /api/push/subscribe — enregistre ou met à jour une subscription push
 // Body : { user_id, subscription: { endpoint, keys: { p256dh, auth } } }
-router.post('/subscribe', (req, res) => {
+router.post('/subscribe', limiterPush, (req, res) => {
   const { user_id, subscription } = req.body
   if (!user_id || !subscription?.endpoint || !subscription?.keys?.p256dh) {
     return res.status(400).json({ error: 'user_id et subscription (endpoint + keys) requis.' })

@@ -7,11 +7,17 @@ export default function Onboarding({ lang, onComplete }) {
   const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
 
+  const PSEUDO_REGEX = /^[a-zA-Z0-9_-]{1,20}$/
+
   async function handleSubmit(e) {
     e.preventDefault()
     const trimmed = pseudo.trim()
     if (!trimmed) {
       setError(t(lang, 'pseudoEmpty'))
+      return
+    }
+    if (!PSEUDO_REGEX.test(trimmed)) {
+      setError(t(lang, 'pseudoInvalid'))
       return
     }
 

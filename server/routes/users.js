@@ -1,14 +1,30 @@
-const express = require('express');
-const router = express.Router();
-const db = require('../database');
+const express  = require('express');
+const rateLimit = require('express-rate-limit');
+const router    = express.Router();
+const db        = require('../database');
+
+// 5 créations de compte max par IP sur 15 minutes
+const limiterCreation = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de tentatives. Réessaie dans 15 minutes.' },
+});
 
 // POST /api/users — création d'un compte à l'onboarding
 // Body : { id, pseudo, avatar_seed }
-router.post('/', (req, res) => {
+router.post('/', limiterCreation, (req, res) => {
   const { id, pseudo, avatar_seed } = req.body;
 
   if (!id || !pseudo || !avatar_seed) {
     return res.status(400).json({ error: 'Champs manquants : id, pseudo, avatar_seed requis.' });
+  }
+
+  // Validation du pseudo : 1-20 caractères, lettres/chiffres/tiret/underscore uniquement
+  const PSEUDO_REGEX = /^[a-zA-Z0-9_-]{1,20}$/;
+  if (!PSEUDO_REGEX.test(pseudo)) {
+    return res.status(400).json({ error: 'Pseudo invalide : 1-20 caractères, lettres, chiffres, - et _ uniquement.' });
   }
 
   // Vérification que le pseudo n'est pas déjà pris
