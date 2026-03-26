@@ -1,18 +1,25 @@
 import { useEffect, useState } from 'react'
 import { getMatchs } from '../api'
 import { MatchCardPasse } from '../components/MatchCard'
+import { LastUpdated } from '../components/LastUpdated'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { t } from '../i18n'
 
 export default function MatchsPasses({ userId, lang }) {
   const [matchs, setMatchs] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    getMatchs(userId).then(data => {
-      // Ne garder que les matchs terminés, du plus récent au plus ancien
+  function charger() {
+    return getMatchs(userId).then(data => {
       setMatchs(data.filter(m => m.statut === 'termine').reverse())
       setLoading(false)
     })
+  }
+
+  const { lastUpdate, isPulling, touchHandlers, markUpdated } = useAutoRefresh(charger)
+
+  useEffect(() => {
+    charger().then(markUpdated)
   }, [userId])
 
   if (loading) {
@@ -20,7 +27,19 @@ export default function MatchsPasses({ userId, lang }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" {...touchHandlers}>
+      {/* Indicateur pull-to-refresh */}
+      {isPulling && (
+        <div className="flex justify-center pb-1 text-blue-400 text-lg animate-spin select-none">
+          ↻
+        </div>
+      )}
+
+      {/* Timestamp dernière MAJ */}
+      <div className="flex justify-end">
+        <LastUpdated timestamp={lastUpdate} lang={lang} />
+      </div>
+
       <h2 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">
         {t(lang, 'past')}
       </h2>

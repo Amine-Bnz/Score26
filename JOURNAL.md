@@ -157,3 +157,20 @@ Résumé des 7 axes :
 - Le polling démarre/s'arrête dynamiquement selon la présence de matchs `en_cours` (pas un interval fixe)
 
 **Suivant :** Rafraîchissement auto général (pull-to-refresh + indicateur "dernière MAJ") — étape 5 v2
+
+### v2 — Étape 5 : Rafraîchissement auto + pull-to-refresh
+
+**Fait :**
+- `hooks/useAutoRefresh.js` : hook réutilisable — polling silencieux toutes les 60s + handlers tactiles pull-to-refresh. `cbRef` (useRef) pointe toujours vers la dernière version du callback sans recréer l'interval
+- `components/LastUpdated.jsx` : composant affichant "MAJ il y a Xs" — ticks automatiques toutes les 10s via setInterval interne
+- `MatchsAvenir.jsx` : refacto — suppression de l'interval manuel conditionnel, utilisation de `useAutoRefresh`. L'indicateur pull-to-refresh (↻ animé) et le timestamp sont affichés en tête de liste
+- `MatchsPasses.jsx` : même pattern — polling 60s + pull-to-refresh + LastUpdated
+
+**Fichiers :** `hooks/useAutoRefresh.js` (nouveau), `components/LastUpdated.jsx` (nouveau), `MatchsAvenir.jsx`, `MatchsPasses.jsx`
+
+**Décisions :**
+- `callbackRef` dans le hook pour éviter les closures stale sur `onRefresh` sans remettre l'interval en place
+- `markUpdated()` exposé par le hook pour que la page l'appelle après le chargement initial (sinon le timestamp reste null jusqu'au premier poll à 60s)
+- Pull-to-refresh : seuil 65px, uniquement si `scrollY === 0` (pas déclenché en cours de scroll normal)
+
+**Suivant :** Animations & transitions — étape 6 v2

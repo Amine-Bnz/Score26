@@ -1,47 +1,27 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { getMatchs } from '../api'
 import { MatchCardAvenir, MatchCardActive } from '../components/MatchCard'
+import { LastUpdated } from '../components/LastUpdated'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { t } from '../i18n'
 
 export default function MatchsAvenir({ userId, lang }) {
   const [aVenir,  setAVenir]  = useState([])
   const [enCours, setEnCours] = useState([])
   const [loading, setLoading] = useState(true)
-  const intervalRef = useRef(null)
+
+  function charger() {
+    return getMatchs(userId).then(data => {
+      setEnCours(data.filter(m => m.statut === 'en_cours'))
+      setAVenir(data.filter(m => m.statut === 'a_venir'))
+      setLoading(false)
+    })
+  }
+
+  const { lastUpdate, isPulling, touchHandlers, markUpdated } = useAutoRefresh(charger)
 
   useEffect(() => {
-    let active = true
-
-    function charger() {
-      getMatchs(userId).then(data => {
-        if (!active) return
-
-        const live    = data.filter(m => m.statut === 'en_cours')
-        const upcoming = data.filter(m => m.statut === 'a_venir')
-
-        setEnCours(live)
-        setAVenir(upcoming)
-        setLoading(false)
-
-        // Démarrer le polling si match en cours et pas encore lancé
-        if (live.length > 0 && !intervalRef.current) {
-          intervalRef.current = setInterval(charger, 60_000)
-        }
-        // Stopper le polling si plus de match en cours
-        if (live.length === 0 && intervalRef.current) {
-          clearInterval(intervalRef.current)
-          intervalRef.current = null
-        }
-      })
-    }
-
-    charger()
-
-    return () => {
-      active = false
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
+    charger().then(markUpdated)
   }, [userId])
 
   if (loading) {
@@ -49,7 +29,19 @@ export default function MatchsAvenir({ userId, lang }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" {...touchHandlers}>
+      {/* Indicateur pull-to-refresh */}
+      {isPulling && (
+        <div className="flex justify-center pb-1 text-blue-400 text-lg animate-spin select-none">
+          ↻
+        </div>
+      )}
+
+      {/* Timestamp dernière MAJ */}
+      <div className="flex justify-end">
+        <LastUpdated timestamp={lastUpdate} lang={lang} />
+      </div>
+
       {/* Section En direct */}
       {enCours.length > 0 && (
         <>
