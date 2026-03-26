@@ -74,6 +74,31 @@ const teamNamesEN = {
   'Cameroun':   'Cameroon',
   'Iran':       'Iran',
   'Qatar':      'Qatar',
+  // CONCACAF
+  'Panama':     'Panama',
+  'Costa Rica': 'Costa Rica',
+  'Honduras':   'Honduras',
+  // CONMEBOL
+  'Venezuela':  'Venezuela',
+  'Bolivie':    'Bolivia',
+  // UEFA
+  'Autriche':   'Austria',
+  'Écosse':     'Scotland',
+  'Angleterre': 'England',
+  // CAF
+  'Nigeria':    'Nigeria',
+  'Cameroun':   'Cameroon',
+  'Égypte':     'Egypt',
+  "Côte d'Ivoire": 'Ivory Coast',
+  'Algérie':    'Algeria',
+  'Mali':       'Mali',
+  'Tunisie':    'Tunisia',
+  // AFC
+  'Irak':       'Iraq',
+  'Ouzbékistan':'Uzbekistan',
+  // OFC / playoffs
+  'Nouvelle-Zélande': 'New Zealand',
+  'Indonésie':  'Indonesia',
 }
 
 // Traduit "🇫🇷 France" → "🇫🇷 France" (FR) ou "🇫🇷 France" (EN)

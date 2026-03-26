@@ -99,5 +99,46 @@ node -e "const db = require('./database'); console.log(db.prepare('SELECT * FROM
 - Build : génère `dist/sw.js` + `dist/manifest.webmanifest`, 10 entrées en précache
 - Note : pour publication, convertir les SVG en PNG 192×192 et 512×512 (meilleure compatibilité Android)
 
-### Prochaine étape
-Finalisation v1 : vérifications, .gitignore, README
+### Icônes SVG + retouches visuelles
+- `Icons.jsx` : SunIcon, MoonIcon, BallIcon, WhistleIcon, UserIcon — SVG stroke inline
+- Header : toggle thème en SVG, fond `slate-100` (mode clair adouci)
+- Navbar : icônes SVG, indicateur ligne bleue en haut de l'onglet actif, labels traduits
+- Mode clair : fond `slate-100`, cards `slate-50` (suppression du blanc pur)
+
+---
+
+## 2026-03-26 — Session 2
+
+### Scope v2 défini
+Voir CLAUDE.md section "Scope v2" pour le détail complet.
+
+Résumé des 7 axes :
+1. **Seed complet** — 48 matchs de poules CDM 2026 réels (phases finales en update séparée)
+2. **Live scores** — API football externe, polling 60s, card "active" avec score + minute + LIVE
+3. **Notifications push** — Web Push API, VAPID, notif 1h avant match sans prono
+4. **Page admin** — `/admin?token=SECRET`, saisie/correction scores, fallback API live
+5. **Rafraîchissement auto** — polling 60s, pull-to-refresh, mise à jour silencieuse
+6. **Animations** — transitions de page, stagger cards, feedback inputs, compteur pts, pulse live
+7. **Avatar perso** — 5 styles DiceBear au choix (bonus, moins prioritaire)
+
+### v2 — Étape 1 : Seed CDM 2026 + schéma BDD
+- `database.js` : nouvelles colonnes `groupe`, `statut` (a_venir/en_cours/termine), `api_match_id` + migrations try/catch pour BDD existante
+- `seed.js` : 48 matchs réels — 16 groupes (A–P) × 3 équipes × 3 matchs, dates juin–juillet 2026
+- `i18n.js` : dictionnaire teamNamesEN complété (48 pays, toutes confédérations)
+- `.env` : placeholders `FOOTBALL_DATA_KEY`, `API_FOOTBALL_KEY`, `ADMIN_TOKEN`
+- Note : équipes et calendrier approximatifs — à confirmer avec le tirage officiel
+
+### v2 — Étape 2 : Intégration football-data.org
+- `server/services/footballData.js` : module avec `syncCalendrier()` (dates officielles + api_match_id) et `syncResultats()` (scores finaux + déclenchement points). Mapping 48 équipes EN→FR+emoji.
+- `server/routes/sync.js` : `POST /api/sync/calendrier`, `POST /api/sync/resultats`, `GET /api/sync/status` — tous protégés par ADMIN_TOKEN
+- `server/index.js` : auto-sync résultats toutes les 10 min via setInterval (actif seulement si FOOTBALL_DATA_KEY configurée)
+- Vérifié : `GET /api/sync/status` → `{"total":48,"sans_api_id":48,"termine_sans_score":0}` ✓
+
+### v2 — Étape 3 : Live scores API-Football
+- `server/database.js` : 3 nouvelles colonnes — `score_live_a`, `score_live_b`, `minute_live`
+- `server/services/apiFootball.js` : `syncLive()` — poll `GET /fixtures?live=all` CDM 2026. Garde-fou : vérifie d'abord si un match est dans la fenêtre temporelle (±120 min) avant d'appeler l'API → économise les 100 req/jour
+- `server/index.js` : polling live toutes les 3 min (actif si API_FOOTBALL_KEY configurée)
+- `server/routes/matchs.js` : `GET /api/matchs` expose `groupe`, `statut`, `score_live_a/b`, `minute_live`
+
+### Prochaine étape v2
+Card "active" frontend — affichage live (score + minute + indicateur LIVE pulsé)
