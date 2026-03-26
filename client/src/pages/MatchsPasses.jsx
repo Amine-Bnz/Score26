@@ -9,8 +9,8 @@ export default function MatchsPasses({ userId, lang }) {
 
   useEffect(() => {
     getMatchs(userId).then(data => {
-      // Ne garder que les matchs passés : score réel renseigné
-      setMatchs(data.filter(m => m.score_reel_a != null).reverse())
+      // Ne garder que les matchs terminés, du plus récent au plus ancien
+      setMatchs(data.filter(m => m.statut === 'termine').reverse())
       setLoading(false)
     })
   }, [userId])

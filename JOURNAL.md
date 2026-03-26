@@ -140,5 +140,20 @@ Résumé des 7 axes :
 - `server/index.js` : polling live toutes les 3 min (actif si API_FOOTBALL_KEY configurée)
 - `server/routes/matchs.js` : `GET /api/matchs` expose `groupe`, `statut`, `score_live_a/b`, `minute_live`
 
-### Prochaine étape v2
-Card "active" frontend — affichage live (score + minute + indicateur LIVE pulsé)
+### v2 — Étape 4 : Card live frontend + polling
+
+**Fait :**
+- `MatchCardActive` ajouté dans `MatchCard.jsx` : badge LIVE rouge pulsé + minute, score live en grand, prono grisé en dessous, bordure bleue animée (CSS `pulse-ring`)
+- `MatchsAvenir.jsx` : section "En direct" affichée en haut si `statut = 'en_cours'`, polling automatique toutes les 60s tant qu'un match est actif (arrêt automatique quand plus rien en cours)
+- `MatchsPasses.jsx` : filtrage par `statut = 'termine'` (plus robuste que `score_reel_a != null`)
+- `index.css` : keyframe `pulse-ring` pour la bordure bleue pulsée des cards live
+- `i18n.js` : clés `liveSection` (FR: "En direct" / EN: "Live") et `myProno`
+
+**Fichiers :** `MatchCard.jsx`, `MatchsAvenir.jsx`, `MatchsPasses.jsx`, `index.css`, `i18n.js`
+
+**Décisions :**
+- Polling 60s (pas 3min comme le backend) car le frontend lit le cache BDD, pas l'API externe — pas de coût
+- `charger()` définie dans le `useEffect` pour éviter les closures stale sur `userId`
+- Le polling démarre/s'arrête dynamiquement selon la présence de matchs `en_cours` (pas un interval fixe)
+
+**Suivant :** Rafraîchissement auto général (pull-to-refresh + indicateur "dernière MAJ") — étape 5 v2

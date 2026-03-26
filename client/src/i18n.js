@@ -17,6 +17,8 @@ const translations = {
     goodOutcomes: 'bonnes issues',
     missed: 'ratés',
     share: 'Partager',
+    liveSection: 'En direct',
+    myProno: 'Mon prono',
   },
   en: {
     welcome: 'Welcome to score26',
@@ -36,6 +38,8 @@ const translations = {
     goodOutcomes: 'good outcomes',
     missed: 'missed',
     share: 'Share',
+    liveSection: 'Live',
+    myProno: 'My prediction',
   },
 }
 

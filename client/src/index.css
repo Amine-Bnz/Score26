@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Animation bordure pulsée pour les cards live */
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 2px rgb(59 130 246 / 0.9); }
+  50%       { box-shadow: 0 0 0 2px rgb(59 130 246 / 0.2); }
+}
+.live-ring {
+  animation: pulse-ring 1.8s ease-in-out infinite;
+}
+
 @layer base {
   body {
     @apply bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white;

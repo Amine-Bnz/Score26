@@ -103,6 +103,68 @@ export function MatchCardAvenir({ match, userId, lang }) {
   )
 }
 
+// ── Card match en cours (live) ───────────────────────────────────────────────
+export function MatchCardActive({ match, lang }) {
+  const scoreA = match.score_live_a ?? '?'
+  const scoreB = match.score_live_b ?? '?'
+  const minute = match.minute_live
+
+  return (
+    <div className="live-ring bg-slate-50 dark:bg-slate-900 rounded-2xl overflow-hidden">
+      <div className="p-4">
+        {/* Badge LIVE + minute */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+          <span className="text-[11px] font-extrabold tracking-widest text-red-500">LIVE</span>
+          {minute != null && (
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+              {minute}&apos;
+            </span>
+          )}
+        </div>
+
+        {/* Équipes + score live */}
+        <div className="flex items-center gap-3">
+          <TeamBlock fullName={match.equipe_a} lang={lang} />
+
+          <div className="flex flex-col items-center gap-2 flex-shrink-0">
+            {/* Score live */}
+            <div className="flex items-center gap-2">
+              <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+                {scoreA}
+              </span>
+              <span className="text-slate-300 dark:text-slate-600 font-bold">—</span>
+              <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+                {scoreB}
+              </span>
+            </div>
+
+            {/* Prono grisé */}
+            {match.prono_id ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 mr-0.5">
+                  {t(lang, 'myProno')} :
+                </span>
+                <span className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                  {match.score_predit_a}
+                </span>
+                <span className="text-slate-200 dark:text-slate-700 text-xs">—</span>
+                <span className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                  {match.score_predit_b}
+                </span>
+              </div>
+            ) : (
+              <span className="text-xs text-slate-400 dark:text-slate-600">{t(lang, 'noProno')}</span>
+            )}
+          </div>
+
+          <TeamBlock fullName={match.equipe_b} lang={lang} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Card matchs passés ───────────────────────────────────────────────────────
 export function MatchCardPasse({ match, lang }) {
   const resultat = getResultat(match)
