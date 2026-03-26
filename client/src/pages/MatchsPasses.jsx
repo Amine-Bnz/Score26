@@ -45,7 +45,9 @@ export default function MatchsPasses({ userId, lang }) {
         {t(lang, 'past')}
       </h2>
       {matchs.length === 0 && (
-        <p className="text-center text-gray-400 dark:text-gray-600 py-10 text-sm">—</p>
+        <p className="text-center text-slate-400 dark:text-slate-600 py-10 text-sm">
+          {t(lang, 'noPast')}
+        </p>
       )}
       {matchs.map((match, i) => (
         <div key={match.id} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>

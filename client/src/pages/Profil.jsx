@@ -134,7 +134,10 @@ export default function Profil({ userId, lang }) {
       {/* Pseudo + score */}
       <div className="text-center">
         <p className="text-xl font-bold text-slate-900 dark:text-white">{user.pseudo}</p>
-        <p className="text-4xl font-extrabold text-blue-500 mt-1 tabular-nums">{stats.score_total}</p>
+        <p className="text-4xl font-extrabold text-blue-500 mt-1 tabular-nums">
+          {stats.score_total ?? 0}
+          <span className="text-lg font-semibold text-slate-400 dark:text-slate-500 ml-1.5">pt</span>
+        </p>
         <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold tracking-widest uppercase mt-0.5">
           {t(lang, 'totalScore')}
         </p>

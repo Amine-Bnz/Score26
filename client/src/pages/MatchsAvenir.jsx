@@ -65,11 +65,27 @@ export default function MatchsAvenir({ userId, lang }) {
         {t(lang, 'upcoming')}
       </h2>
       {aVenir.length === 0 && (
-        <p className="text-center text-gray-400 dark:text-gray-600 py-10 text-sm">—</p>
+        <p className="text-center text-slate-400 dark:text-slate-600 py-10 text-sm">
+          {t(lang, 'noUpcoming')}
+        </p>
       )}
-      {aVenir.map((match, i) => (
-        <div key={match.id} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>
-          <MatchCardAvenir match={match} userId={userId} lang={lang} />
+      {Object.entries(
+        aVenir.reduce((acc, m) => {
+          const g = m.groupe ?? '?'
+          if (!acc[g]) acc[g] = []
+          acc[g].push(m)
+          return acc
+        }, {})
+      ).sort(([a], [b]) => a.localeCompare(b)).map(([groupe, matchsGroupe]) => (
+        <div key={groupe}>
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-3 mb-1 pl-1">
+            {t(lang, 'groupLabel')} {groupe}
+          </p>
+          {matchsGroupe.map((match, i) => (
+            <div key={match.id} className="card-stagger mb-3" style={{ animationDelay: `${i * 50}ms` }}>
+              <MatchCardAvenir match={match} userId={userId} lang={lang} />
+            </div>
+          ))}
         </div>
       ))}
     </div>
