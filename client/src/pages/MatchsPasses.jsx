@@ -46,8 +46,10 @@ export default function MatchsPasses({ userId, lang }) {
       {matchs.length === 0 && (
         <p className="text-center text-gray-400 dark:text-gray-600 py-10 text-sm">—</p>
       )}
-      {matchs.map(match => (
-        <MatchCardPasse key={match.id} match={match} lang={lang} />
+      {matchs.map((match, i) => (
+        <div key={match.id} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>
+          <MatchCardPasse match={match} lang={lang} />
+        </div>
       ))}
     </div>
   )

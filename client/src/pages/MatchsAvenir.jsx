@@ -49,8 +49,10 @@ export default function MatchsAvenir({ userId, lang }) {
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
             {t(lang, 'liveSection')}
           </h2>
-          {enCours.map(match => (
-            <MatchCardActive key={match.id} match={match} lang={lang} />
+          {enCours.map((match, i) => (
+            <div key={match.id} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>
+              <MatchCardActive match={match} lang={lang} />
+            </div>
           ))}
           <div className="h-px bg-slate-200 dark:bg-slate-800 my-1" />
         </>
@@ -63,8 +65,10 @@ export default function MatchsAvenir({ userId, lang }) {
       {aVenir.length === 0 && (
         <p className="text-center text-gray-400 dark:text-gray-600 py-10 text-sm">—</p>
       )}
-      {aVenir.map(match => (
-        <MatchCardAvenir key={match.id} match={match} userId={userId} lang={lang} />
+      {aVenir.map((match, i) => (
+        <div key={match.id} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>
+          <MatchCardAvenir match={match} userId={userId} lang={lang} />
+        </div>
       ))}
     </div>
   )

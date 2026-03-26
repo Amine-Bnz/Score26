@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { upsertProno } from '../api'
 import { t, splitTeam } from '../i18n'
 
@@ -16,6 +16,23 @@ const resultStyles = {
   bonne_issue: { bar: 'bg-blue-500',  badge: 'bg-blue-500/10  text-blue-500  border-blue-500/20'  },
   rate:        { bar: 'bg-red-500',   badge: 'bg-red-500/10   text-red-500   border-red-500/20'   },
   neutre:      { bar: 'bg-slate-600', badge: 'bg-slate-500/10 text-slate-400 border-slate-600/20' },
+}
+
+// Compteur animé 0 → valeur cible (pour les points obtenus)
+function AnimatedCount({ value }) {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    if (value == null) return
+    let current = 0
+    const step = Math.max(1, Math.ceil(value / 20))
+    const id = setInterval(() => {
+      current += step
+      if (current >= value) { setCount(value); clearInterval(id) }
+      else setCount(current)
+    }, 30)
+    return () => clearInterval(id)
+  }, [value])
+  return <>{count}</>
 }
 
 // Formate la date : "15 JUN · 21:00"
@@ -44,7 +61,9 @@ function TeamBlock({ fullName, lang }) {
 export function MatchCardAvenir({ match, userId, lang }) {
   const [scoreA, setScoreA] = useState(match.score_predit_a ?? '')
   const [scoreB, setScoreB] = useState(match.score_predit_b ?? '')
+  const [saved,  setSaved]  = useState(false)
   const debounceRef = useRef(null)
+  const savedTimerRef = useRef(null)
 
   const isVerrouille = match.verrouille === 1 || new Date() >= new Date(match.date_coup_envoi)
 
@@ -57,6 +76,11 @@ export function MatchCardAvenir({ match, userId, lang }) {
       const b = isA ? autre : parsed
       if (a === '' || b === '') return
       upsertProno({ user_id: userId, match_id: match.id, score_predit_a: a, score_predit_b: b })
+        .then(() => {
+          setSaved(true)
+          clearTimeout(savedTimerRef.current)
+          savedTimerRef.current = setTimeout(() => setSaved(false), 700)
+        })
     }, 600)
   }
 
@@ -85,7 +109,8 @@ export function MatchCardAvenir({ match, userId, lang }) {
             value={scoreA}
             disabled={isVerrouille}
             onChange={e => handleChange(e.target.value, setScoreA, scoreB, true)}
-            className="w-12 h-12 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:border-solid focus:border-blue-500 focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed"
+            className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
+              ${saved ? 'border-solid border-green-400' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
           />
           <span className="text-slate-300 dark:text-slate-600 font-bold text-lg select-none">—</span>
           <input
@@ -93,7 +118,8 @@ export function MatchCardAvenir({ match, userId, lang }) {
             value={scoreB}
             disabled={isVerrouille}
             onChange={e => handleChange(e.target.value, setScoreB, scoreA, false)}
-            className="w-12 h-12 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:border-solid focus:border-blue-500 focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed"
+            className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
+              ${saved ? 'border-solid border-green-400' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
           />
         </div>
 
@@ -211,7 +237,7 @@ export function MatchCardPasse({ match, lang }) {
             {/* Badge points */}
             {match.points_obtenus != null && (
               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${style.badge}`}>
-                +{match.points_obtenus} pts
+                +<AnimatedCount value={match.points_obtenus} /> pts
               </span>
             )}
           </div>

@@ -39,9 +39,9 @@ export default function App() {
       />
 
       <main className="pb-20 px-4 pt-4">
-        {page === 'avenir' && <MatchsAvenir userId={userId} lang={lang} />}
-        {page === 'passes' && <MatchsPasses userId={userId} lang={lang} />}
-        {page === 'profil' && <Profil       userId={userId} lang={lang} />}
+        {page === 'avenir' && <div className="page-enter"><MatchsAvenir userId={userId} lang={lang} /></div>}
+        {page === 'passes' && <div className="page-enter"><MatchsPasses userId={userId} lang={lang} /></div>}
+        {page === 'profil' && <div className="page-enter"><Profil       userId={userId} lang={lang} /></div>}
       </main>
 
       <Navbar page={page} onNavigate={setPage} lang={lang} />

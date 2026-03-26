@@ -174,3 +174,21 @@ Résumé des 7 axes :
 - Pull-to-refresh : seuil 65px, uniquement si `scrollY === 0` (pas déclenché en cours de scroll normal)
 
 **Suivant :** Animations & transitions — étape 6 v2
+
+### v2 — Étape 6 : Animations & transitions
+
+**Fait :**
+- **Transitions de page** : keyframe `pageEnter` (fade + translateY 8px→0, 0.22s). Chaque page est enveloppée d'un `<div className="page-enter">` dans App.jsx — il se monte/démonte avec la condition, ce qui déclenche l'animation à chaque changement d'onglet
+- **Stagger cards** : keyframe `cardIn` + classe `.card-stagger`. Chaque card est enveloppée d'un `<div style={{ animationDelay: i*50ms }}>` dans les listes → apparition en cascade (50ms entre chaque)
+- **Flash vert save** : dans `MatchCardAvenir`, après `upsertProno().then(...)` → état `saved` passe à true 700ms → bordure des inputs vire au vert (`border-green-400 border-solid`), transition CSS `duration-300`
+- **Compteur animé** : composant `AnimatedCount` dans MatchCard.jsx — count 0→valeur en ~20 frames (interval 30ms) au montage de la card passée
+- **Tap feedback Navbar** : `active:scale-90 transition-transform` sur les boutons de la navbar
+
+**Fichiers :** `index.css`, `App.jsx`, `Navbar.jsx`, `MatchCard.jsx`, `MatchsAvenir.jsx`, `MatchsPasses.jsx`
+
+**Décisions :**
+- `translateY` plutôt que `translateX` pour les transitions de page — plus naturel sur mobile, évite de gérer la direction gauche/droite
+- `both` sur `animation-fill-mode` pour que les cards soient invisibles avant leur délai (évite le flash)
+- `savedTimerRef` pour annuler le timer flash si l'user retape rapidement
+
+**Suivant :** Notifications push (Web Push API, VAPID) — étape 7 v2
