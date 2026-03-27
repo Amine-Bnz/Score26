@@ -382,3 +382,24 @@ Résumé des 7 axes :
 - Le bloc remplace le bouton (pas de bouton cliquable quand `denied` car `requestPermission()` est silencieusement ignoré par le navigateur)
 
 **Suivant :** Gestion perte de connexion (étape 4 v2.5)
+
+---
+
+## 2026-03-27 — v2.5 Étape 4 : Gestion perte de connexion
+
+**Fait :**
+- `hooks/useOnlineStatus.js` : hook qui écoute les événements `online`/`offline` du navigateur, retourne un booléen `isOnline`
+- `components/OfflineBanner.jsx` : bandeau fixe en haut de l'écran (point rouge pulsé + message), affiché uniquement quand offline
+- `i18n.js` : clé `offline` ajoutée en FR et EN
+- `App.jsx` : importe `useOnlineStatus` + affiche `OfflineBanner` si `!isOnline` + passe `isOnline` à `MatchsAvenir`
+- `MatchsAvenir.jsx` : reçoit `isOnline` (défaut `true`) et le transmet à `MatchCardAvenir`
+- `MatchCard.jsx` — `MatchCardAvenir` : skip l'appel `upsertProno` si `!isOnline` (les inputs restent actifs, mais la sauvegarde n'est pas tentée)
+
+**Fichiers :** `useOnlineStatus.js` (nouveau), `OfflineBanner.jsx` (nouveau), `i18n.js`, `App.jsx`, `MatchsAvenir.jsx`, `MatchCard.jsx`
+
+**Décisions :**
+- Inputs laissés actifs en offline : l'user peut pré-saisir ses scores, ils seront sauvegardés dès que la connexion revient (au prochain changement de valeur)
+- `pointer-events-none` sur le bandeau : ne bloque pas les interactions derrière
+- Pas de toast ou modal : le bandeau persistant suffit, il disparaît automatiquement au retour de la connexion
+
+**Suivant :** Logs serveur avec pino (étape 5 v2.5)

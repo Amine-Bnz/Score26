@@ -58,7 +58,7 @@ function TeamBlock({ fullName, lang }) {
 }
 
 // ── Card matchs à venir ──────────────────────────────────────────────────────
-export function MatchCardAvenir({ match, userId, lang }) {
+export function MatchCardAvenir({ match, userId, lang, isOnline = true }) {
   const [scoreA, setScoreA] = useState(match.score_predit_a ?? '')
   const [scoreB, setScoreB] = useState(match.score_predit_b ?? '')
   const [saved,  setSaved]  = useState(false)
@@ -75,6 +75,7 @@ export function MatchCardAvenir({ match, userId, lang }) {
       const a = isA ? parsed : autre
       const b = isA ? autre : parsed
       if (a === '' || b === '') return
+      if (!isOnline) return
       upsertProno({ user_id: userId, match_id: match.id, score_predit_a: a, score_predit_b: b })
         .then(() => {
           setSaved(true)

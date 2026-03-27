@@ -5,7 +5,7 @@ import { LastUpdated } from '../components/LastUpdated'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { t } from '../i18n'
 
-export default function MatchsAvenir({ userId, lang }) {
+export default function MatchsAvenir({ userId, lang, isOnline = true }) {
   const [aVenir,  setAVenir]  = useState([])
   const [enCours, setEnCours] = useState([])
   const [loading, setLoading] = useState(true)
@@ -83,7 +83,7 @@ export default function MatchsAvenir({ userId, lang }) {
           </p>
           {matchsGroupe.map((match, i) => (
             <div key={match.id} className="card-stagger mb-3" style={{ animationDelay: `${i * 50}ms` }}>
-              <MatchCardAvenir match={match} userId={userId} lang={lang} />
+              <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} />
             </div>
           ))}
         </div>
