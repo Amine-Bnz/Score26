@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'maskable-icon.svg'],
+      includeAssets: ['icon.svg', 'maskable-icon.svg', 'icon-192.png', 'icon-512.png', 'maskable-icon-512.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Score26',
         short_name: 'Score26',
@@ -19,15 +19,25 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
+            src: 'icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: 'icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+          {
+            src: 'maskable-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+          {
             src: 'icon.svg',
             sizes: 'any',
             type: 'image/svg+xml',
-          },
-          {
-            src: 'maskable-icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'maskable',
           },
         ],
       },

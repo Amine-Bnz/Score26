@@ -295,3 +295,57 @@ Résumé des 7 axes :
    - Concept + règles scoring + mention cote cachée
 
 **Suivant :** Étape 1 — Polish interface
+
+---
+
+## 2026-03-27 — Plan v2.5
+
+**Décision :** Après les vérifications pré-déploiement (v2.1), le scope v2.5 est établi et priorisé. Il couvre UX, qualité, infrastructure et une nouvelle feature majeure.
+
+**Ordre de priorité retenu :**
+
+| # | Feature | Effort | Urgence |
+|---|---|---|---|
+| 1 | Icônes PWA PNG | Faible | Avant déploiement |
+| 2 | Page 404 | Faible | Avant déploiement |
+| 3 | Feedback notif bloquées | Faible | UX |
+| 4 | Gestion perte connexion | Moyen | UX mobile |
+| 5 | Logs serveur (pino) | Moyen | Infrastructure |
+| 6 | Phases finales (seed + UI) | Moyen | Data-dépendant (post 26/06) |
+| 7 | Tests automatisés | Moyen | Qualité |
+| 8 | Déploiement | Fort | Objectif final |
+| 9 | Classement global | Fort | Feature engagement |
+
+**Rationale :**
+- Items 1–4 : quick wins UX, à faire avant le déploiement
+- Item 5 : nécessaire dès qu'on est en prod
+- Item 6 : bloqué par les résultats sportifs (barrages UEFA le 31/03, qualifiés groupes le 26/06)
+- Item 7 : tests sur code critique (scoring), pas de lib externe (Node test runner)
+- Item 8 : Fly.io (backend SQLite) + Vercel (frontend statique)
+- Item 9 : classement calculé à la volée, 4e onglet Navbar
+
+**Détail complet dans CLAUDE.md — section "Scope v2.5"**
+
+**Suivant :** Icônes PWA PNG (étape 1 v2.5)
+
+---
+
+## 2026-03-27 — v2.5 Étape 1 : Icônes PWA PNG
+
+**Fait :**
+- `client/generate-icons.mjs` : script Node (ESM) utilisant `sharp` pour générer les 4 PNG depuis les SVG sources
+- `client/public/icon-192.png` : 192×192, icône Android écran d'accueil
+- `client/public/icon-512.png` : 512×512, splash screen Android
+- `client/public/maskable-icon-512.png` : 512×512 depuis `maskable-icon.svg`, icône adaptative Android
+- `client/public/apple-touch-icon.png` : 180×180, icône iOS
+- `client/vite.config.js` : manifest mis à jour — PNG explicites (192, 512, maskable 512) + SVG en bonus pour desktop
+- `client/index.html` : `apple-touch-icon` corrigé (pointait sur le SVG, iOS ne supporte pas SVG ici)
+
+**Fichiers :** `generate-icons.mjs` (nouveau), `icon-192.png`, `icon-512.png`, `maskable-icon-512.png`, `apple-touch-icon.png` (nouveaux), `vite.config.js`, `index.html`
+
+**Décisions :**
+- Script placé dans `/client` pour que Node trouve `sharp` dans le `node_modules` local
+- SVG conservé dans le manifest en dernier (navigateurs desktop qui le supportent)
+- `generate-icons.mjs` à relancer si les SVG sources changent
+
+**Suivant :** Page 404 (étape 2 v2.5)

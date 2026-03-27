@@ -236,10 +236,8 @@ Depuis la page Profil, l'user peut choisir parmi **5 styles DiceBear** (bottts, 
 ---
 
 ## Ce qui reste hors scope (v2 et au-delà)
-- Classement global / leaderboard
 - Profil public / historique visible par d'autres users
 - Récupération de compte perdu
-- Déploiement (à décider séparément)
 
 ---
 
@@ -287,6 +285,162 @@ Petite modale accessible depuis le header (icône ℹ️). Contenu :
 - Règles de scoring : score exact = 50 pts, bonne issue = 20 pts, raté = 0 pt
 - Mention de la cote cachée (sans la dévoiler)
 - Pas de page dédiée, juste une modale légère
+
+---
+
+---
+
+## Scope v2.5
+
+Validé le 2026-03-27. Suite de la v2.1, à réaliser dans cet ordre de priorité.
+
+---
+
+### 1. Icônes PWA PNG pour Android
+
+Les icônes actuelles sont en SVG. Android requiert des PNG pour l'installation sur l'écran d'accueil.
+
+**À faire :**
+- Générer `icon-192.png` et `icon-512.png` depuis le SVG source (`public/icon.svg`)
+- Générer `maskable-icon-512.png` depuis `public/maskable-icon.svg`
+- Mettre à jour `vite.config.js` → manifest icons pour pointer sur les PNG
+- Même source SVG → même rendu sur toutes les plateformes
+
+**Outil recommandé :** script Node avec `sharp` (npm) ou conversion manuelle via Inkscape/navigateur.
+
+---
+
+### 2. Page 404
+
+Si l'user tape une URL inconnue (ex: `/foo`), l'app affiche un écran blanc. Ajouter un cas par défaut dans le routeur.
+
+**À faire :**
+- Composant `NotFound.jsx` : message simple "Page introuvable", bouton retour
+- Dans `App.jsx` : cas `default` dans la logique de routing existante (state-based)
+- Pas de react-router nécessaire
+
+---
+
+### 3. Feedback si notifications bloquées
+
+Quand le navigateur a refusé les notifications (`permission === 'denied'`), le bouton "Activer les notifications" dans le profil ne peut rien faire — mais l'user ne comprend pas pourquoi.
+
+**À faire :**
+- Si statut `denied` : message explicatif ("Notifications bloquées par le navigateur")
+- Lien ou instructions pour réactiver dans les paramètres du navigateur (Chrome : cliquer sur le cadenas > Notifications > Autoriser)
+- Adapter les strings i18n FR/EN
+
+---
+
+### 4. Gestion perte de connexion
+
+Sur mobile, la connexion peut couper. Actuellement, les requêtes échouent silencieusement.
+
+**À faire :**
+- Écouter les événements `online` / `offline` du navigateur (`window.addEventListener`)
+- Afficher un bandeau discret en haut de l'app quand offline ("Pas de connexion — les données peuvent être obsolètes")
+- Masquer le bandeau dès que la connexion revient
+- Désactiver la sauvegarde des pronos quand offline (avec message)
+- Pas de lib externe, API native du navigateur
+
+---
+
+### 5. Logs serveur
+
+En production, `console.log` ne suffit pas. Il faut des logs structurés et persistés.
+
+**À faire :**
+- Intégrer `pino` (léger, JSON, zéro config) comme logger dans `server/index.js`
+- Logger : démarrage serveur, erreurs Express, accès admin (IP + action + timestamp), résultats sync API, erreurs push
+- Niveau de log configurable via `.env` : `LOG_LEVEL=info` (ou `debug` en dev)
+- Pas de rotation de fichiers en v2.5 (géré par la plateforme de déploiement)
+
+---
+
+### 6. Phases finales (data-dépendant)
+
+Le schéma BDD supporte déjà `phase = '8eme' | 'quart' | 'demi' | 'finale_3e' | 'finale'`. Seule la seed manque.
+
+**Calendrier :**
+- Barrages UEFA connus le 31 mars 2026 → mettre à jour les équipes placeholder dans `seed.js`
+- Phase de groupes termine le 26 juin 2026 → qualifiés connus
+- 8èmes de finale : 29 juin – 2 juillet 2026
+- Quarts : 4–5 juillet
+- Demies : 8–9 juillet
+- Finale 3e place : 11 juillet
+- Finale : 19 juillet
+
+**À faire (en 2 temps) :**
+- **Maintenant** : préparer la structure du seed pour les phases finales (format, équipes TBD)
+- **Après le 26 juin** : remplir les matchs à élimination directe avec les vraies équipes, ajouter un affichage dédié dans l'UI (section séparée dans "Matchs à venir")
+
+**UI :**
+- Séparateur "8èmes de finale", "Quarts de finale" etc. dans la liste (comme les séparateurs de groupe)
+- Les équipes TBD affichées comme "1er Groupe A vs 2e Groupe B"
+
+---
+
+### 7. Tests automatisés
+
+Pas de tests actuellement. Priorité : couvrir le code critique (scoring, routes).
+
+**Plan par couche :**
+
+**Backend — Node test runner intégré (pas de dépendance) :**
+- `server/tests/scoring.test.js` : cas nominaux (score exact, bonne issue, faux, prono unique, cote plafonnée à ×5)
+- `server/tests/routes.users.test.js` : création compte (succès, pseudo pris, regex invalide, trop long)
+- `server/tests/routes.pronos.test.js` : upsert valide, rejet si match verrouillé, scores hors bornes
+- Base de données in-memory (`:memory:`) pour les tests — isolation totale
+
+**Frontend — aucun test prévu en v2.5** (pas de valeur immédiate, logique métier côté serveur)
+
+**À faire :**
+- `package.json` serveur : script `"test": "node --test tests/**/*.test.js"`
+- Tests synchrones (better-sqlite3 est synchrone) → pas de mock complexe
+
+---
+
+### 8. Déploiement
+
+**Architecture cible :**
+- **Frontend** : Vercel (build statique React, CDN global, HTTPS automatique)
+- **Backend** : Fly.io (supporte SQLite avec volume persistant, Node.js, gratuit en tier hobby)
+
+**Étapes :**
+1. Créer compte Fly.io, installer `flyctl`
+2. `fly launch` dans `/server` → génère `fly.toml`
+3. Créer volume persistant : `fly volumes create score26_data --size 1` → monter sur `/data/`
+4. Pointer `DATABASE_PATH=/data/score26.db` dans `.env` prod
+5. Configurer toutes les variables d'env dans Fly (ADMIN_TOKEN, VAPID keys, API keys, CORS_ORIGIN)
+6. Déployer le frontend sur Vercel → pointer `VITE_API_URL` sur le backend Fly
+7. Restreindre `CORS_ORIGIN` au domaine Vercel
+
+**Domaine :** optionnel, à décider séparément.
+
+**À ne pas oublier :**
+- `npm run seed` en prod avant le 11 juin 2026 (premier match CDM)
+- `node generate-vapid.js` une seule fois, persister les clés dans Fly secrets
+- Sauvegardes régulières du volume SQLite (`fly ssh console` + `sqlite3 .dump`)
+
+---
+
+### 9. Classement global
+
+Leaderboard des users par score total. Feature d'engagement social.
+
+**Modèle :**
+- Pas de nouvelle table — calculé à la volée depuis `pronos.points_obtenus`
+- `GET /api/classement` : `SELECT users.pseudo, users.avatar_seed, SUM(pronos.points_obtenus) as total FROM users LEFT JOIN pronos ... GROUP BY users.id ORDER BY total DESC LIMIT 100`
+
+**UI :**
+- 4e icône dans la Navbar : podium / trophée
+- Page `Classement.jsx` : liste scrollable, rang + avatar + pseudo + score
+- Mettre en évidence l'user connecté (fond légèrement coloré)
+- Médailles 🥇🥈🥉 pour le top 3
+- Limité aux 100 premiers pour éviter les requêtes lourdes
+- Mis à jour via polling 60s (même hook `useAutoRefresh`)
+
+**Vie privée :** tous les users sont visibles (pas d'opt-out en v2.5 — pseudo et score sont publics par design)
 
 ---
 
