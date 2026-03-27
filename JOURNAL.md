@@ -403,3 +403,23 @@ Résumé des 7 axes :
 - Pas de toast ou modal : le bandeau persistant suffit, il disparaît automatiquement au retour de la connexion
 
 **Suivant :** Logs serveur avec pino (étape 5 v2.5)
+
+---
+
+## 2026-03-27 — v2.5 Étape 5 : Logs serveur (pino)
+
+**Fait :**
+- `npm install pino` + `npm install --save-dev pino-pretty`
+- `server/logger.js` : instance pino partagée — pino-pretty en dev (coloré, heure lisible), JSON brut en prod (`NODE_ENV=production`)
+- `server/index.js` : import logger, remplacement de tous les `console.*`, ajout d'un middleware d'erreur Express qui log les erreurs non gérées
+- `server/routes/admin.js` : import logger, remplacement des `console.warn/log` dans `checkToken`
+- `server/.env` : ajout de `LOG_LEVEL=info` (configurable : debug | info | warn | error)
+
+**Fichiers :** `logger.js` (nouveau), `index.js`, `routes/admin.js`, `.env`
+
+**Décisions :**
+- Pas de log HTTP par requête (trop de bruit avec le polling 60s) — uniquement les erreurs, les events serveur et les accès admin
+- `pino-pretty` en devDependency uniquement : pas embarqué en prod
+- Structured logging (objets JSON) : `logger.error({ err: e }, 'message')` — exploitable par les outils de monitoring en prod (Fly.io logs, Papertrail, etc.)
+
+**Suivant :** Phases finales — seed + UI (étape 6 v2.5, data-dépendant)

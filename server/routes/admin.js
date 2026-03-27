@@ -2,16 +2,17 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
 const { calculerPoints } = require('../scoring');
+const logger  = require('../logger');
 
 // Middleware — vérifie le token admin à chaque requête
 function checkToken(req, res, next) {
   const token = req.query.token || req.headers['x-admin-token'];
   const expected = process.env.ADMIN_TOKEN;
   if (!expected || expected === 'change_this_before_deploy' || token !== expected) {
-    console.warn(`[admin] Accès refusé — IP: ${req.ip} ${req.method} ${req.path}`);
+    logger.warn({ ip: req.ip, method: req.method, path: req.path }, '[admin] Accès refusé');
     return res.status(401).json({ error: 'Token invalide.' });
   }
-  console.log(`[admin] Accès — IP: ${req.ip} ${req.method} ${req.path}`);
+  logger.info({ ip: req.ip, method: req.method, path: req.path }, '[admin] Accès autorisé');
   next();
 }
 

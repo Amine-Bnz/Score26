@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
+const logger  = require('./logger');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -31,8 +32,14 @@ app.use('/api/admin',  require('./routes/admin'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// Middleware d'erreur — log toutes les réponses 4xx/5xx
+app.use((err, req, res, next) => {
+  logger.error({ err, method: req.method, url: req.url }, 'Erreur Express');
+  res.status(err.status || 500).json({ error: err.message || 'Erreur interne' });
+});
+
 app.listen(PORT, () => {
-  console.log(`Serveur démarré sur le port ${PORT}`);
+  logger.info(`Serveur démarré sur le port ${PORT}`);
   lancerPolling();
 });
 
@@ -46,11 +53,11 @@ function lancerPolling() {
   if (fdPret) {
     setInterval(async () => {
       try { await syncResultats(db, { calculerPoints }); }
-      catch (e) { console.error('[auto-sync résultats]', e.message); }
+      catch (e) { logger.error({ err: e }, '[auto-sync résultats] Erreur'); }
     }, 10 * 60 * 1000);
-    console.log('Auto-sync résultats activé (football-data.org, toutes les 10 min)');
+    logger.info('Auto-sync résultats activé (football-data.org, toutes les 10 min)');
   } else {
-    console.log('Auto-sync résultats désactivé — configurer FOOTBALL_DATA_KEY dans .env');
+    logger.warn('Auto-sync résultats désactivé — configurer FOOTBALL_DATA_KEY dans .env');
   }
 
   // ── Live scores (API-Football) — toutes les 3 min ─────────────────────────
@@ -59,11 +66,11 @@ function lancerPolling() {
   if (afPret) {
     setInterval(async () => {
       try { await syncLive(db); }
-      catch (e) { console.error('[auto-sync live]', e.message); }
+      catch (e) { logger.error({ err: e }, '[auto-sync live] Erreur'); }
     }, 3 * 60 * 1000);
-    console.log('Auto-sync live activé (API-Football, toutes les 3 min)');
+    logger.info('Auto-sync live activé (API-Football, toutes les 3 min)');
   } else {
-    console.log('Auto-sync live désactivé — configurer API_FOOTBALL_KEY dans .env');
+    logger.warn('Auto-sync live désactivé — configurer API_FOOTBALL_KEY dans .env');
   }
 
   // ── Notifications push — toutes les 5 min ─────────────────────────────────
@@ -72,10 +79,10 @@ function lancerPolling() {
   if (vapidPret) {
     setInterval(async () => {
       try { await envoyerNotifAvantMatch(db); }
-      catch (e) { console.error('[push notif]', e.message); }
+      catch (e) { logger.error({ err: e }, '[push notif] Erreur'); }
     }, 5 * 60 * 1000);
-    console.log('Notifications push activées (VAPID, toutes les 5 min)');
+    logger.info('Notifications push activées (VAPID, toutes les 5 min)');
   } else {
-    console.log('Notifications push désactivées — générer les clés avec : node generate-vapid.js');
+    logger.warn('Notifications push désactivées — générer les clés avec : node generate-vapid.js');
   }
 }
