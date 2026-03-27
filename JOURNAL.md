@@ -423,3 +423,35 @@ Résumé des 7 axes :
 - Structured logging (objets JSON) : `logger.error({ err: e }, 'message')` — exploitable par les outils de monitoring en prod (Fly.io logs, Papertrail, etc.)
 
 **Suivant :** Phases finales — seed + UI (étape 6 v2.5, data-dépendant)
+
+---
+
+## 2026-03-27 — v2.5 Étape 7 : Tests automatisés
+
+**Fait :**
+- `server/scoring.js` : export de `calculerPointsBase` ajouté — seul changement en code de prod, non-cassant (`calculerPoints` reste exporté aussi)
+- `npm install --save-dev supertest` dans `/server` — seule dépendance de test ajoutée
+- `server/tests/helpers/db.js` : crée une BDD SQLite `:memory:` avec le schéma complet (users, matchs, pronos), réinitialisée à chaque suite de tests. Aucune interaction avec `score26.db`
+- `server/tests/scoring.test.js` : 11 cas — 6 tests sur la logique pure (`calculerPointsBase`, sans BDD), 5 tests sur la cote cachée (`calculerPoints` avec insertions en BDD in-memory : seul prono ×1, 1/2 pronos ×2, cote plafonnée ×5, mauvaise issue 0 pt, aucun prono sans plantage)
+- `server/tests/users.test.js` : 10 cas — POST création valide, pseudo doublon (409), pseudo invalide (vide / trop long / espace / accent / @) (400), champs manquants (400), GET user existant (200+stats), GET user inexistant (404)
+- `server/tests/pronos.test.js` : 8 cas — prono valide (201), upsert sur même user+match (201 nouvelles valeurs), score négatif / >99 / non-entier (400), match verrouillé (403), match inexistant (404), champs manquants (400)
+- `server/package.json` : script `"test": "node --test tests/scoring.test.js tests/users.test.js tests/pronos.test.js"`
+
+**Résultat :** `29 tests / 29 pass / 0 fail` — premier lancement
+
+**Fichiers :** `scoring.js`, `tests/helpers/db.js` (nouveau), `tests/scoring.test.js` (nouveau), `tests/users.test.js` (nouveau), `tests/pronos.test.js` (nouveau), `package.json`
+
+**Décisions :**
+- `node:test` + `node:assert` natifs (Node 24) : zéro dépendance de framework
+- `require.cache` override pour injecter la BDD in-memory dans les modules qui font `require('../database')` — évite toute modification des routes de prod
+- Le rate-limiter de `POST /api/users` (`express-rate-limit`) est remplacé par un middleware passthrough dans les tests (même technique) : 8 POST dans un test dépasseraient la limite de 5 req/15min
+- `describe({ concurrency: false })` dans chaque fichier : garantit l'exécution séquentielle des tests, évite les conflits d'état SQLite
+- Chaque suite pre-seed ses propres données dans `before()` → les tests sont indépendants entre eux, aucune dépendance d'ordre
+- Pas de test sur `admin.js`, `sync.js`, `push.js` : CRUD simple, APIs externes, ou dépendances VAPID trop coûteuses à mocker pour la valeur apportée
+
+**Pour lancer :**
+```bash
+cd server && npm test
+```
+
+**Suivant :** Déploiement (étape 8 v2.5) ou Classement global (étape 9 v2.5)

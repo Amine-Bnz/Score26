@@ -51,4 +51,4 @@ function calculerPointsBase(prono, match) {
   return 0;
 }
 
-module.exports = { calculerPoints };
+module.exports = { calculerPoints, calculerPointsBase };

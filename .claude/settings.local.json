@@ -5,7 +5,8 @@
       "Bash(node seed.js)",
       "Bash(node -e \"require\\(''web-push''\\); console.log\\(''ok''\\)\")",
       "Bash(node -e \"require\\(''helmet''\\); console.log\\(''ok''\\)\")",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(node --test tests/scoring.test.js tests/users.test.js tests/pronos.test.js)"
     ]
   }
 }
