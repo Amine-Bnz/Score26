@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 const GROUPES = ['A','B','C','D','E','F','G','H','I','J','K','L']
+const API_BASE = (import.meta.env.VITE_API_URL ?? '') + '/api'
 
 const STATUT_LABEL = {
   a_venir:  { label: 'À venir',  cls: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' },
@@ -33,7 +34,7 @@ export default function Admin() {
   async function charger() {
     setError('')
     try {
-      const res = await fetch(`/api/admin/matchs?token=${token}`)
+      const res = await fetch(`${API_BASE}/admin/matchs?token=${token}`)
       if (res.status === 401) { setError('Token invalide — vérifier ?token= dans l\'URL'); return }
       if (!res.ok) {
         const txt = await res.text()
@@ -61,7 +62,7 @@ export default function Admin() {
   useEffect(() => { charger() }, [])
 
   async function patcher(matchId, body, msg) {
-    const res = await fetch(`/api/admin/matchs/${matchId}?token=${token}`, {
+    const res = await fetch(`${API_BASE}/admin/matchs/${matchId}?token=${token}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

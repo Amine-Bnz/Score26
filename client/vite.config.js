@@ -51,7 +51,8 @@ export default defineConfig({
         // En mode offline, la requête échoue proprement (network error)
         runtimeCaching: [
           {
-            urlPattern: /^\/api\//,
+            // Fonctionne en dev (URL relatives) et en prod (URL absolues vers Fly.io)
+          urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
             handler: 'NetworkOnly',
           },
         ],

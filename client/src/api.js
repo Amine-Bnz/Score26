@@ -1,6 +1,8 @@
 // Toutes les fonctions d'appel vers le backend Express
 
-const BASE = '/api'
+// En dev : VITE_API_URL est vide → '/api' est intercepté par le proxy Vite → localhost:3000
+// En prod : VITE_API_URL = 'https://ton-backend.fly.dev' → URL absolue vers Fly.io
+const BASE = (import.meta.env.VITE_API_URL ?? '') + '/api'
 
 export async function createUser({ id, pseudo, avatar_seed }) {
   const res = await fetch(`${BASE}/users`, {

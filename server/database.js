@@ -1,7 +1,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, 'score26.db'));
+// En prod (Fly.io) : DATABASE_PATH=/data/score26.db (volume persistant)
+// En dev : fichier local dans le dossier server/
+const db = new Database(process.env.DATABASE_PATH || path.join(__dirname, 'score26.db'));
 
 db.pragma('foreign_keys = ON');
 

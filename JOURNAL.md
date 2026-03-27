@@ -455,3 +455,24 @@ cd server && npm test
 ```
 
 **Suivant :** Déploiement (étape 8 v2.5) ou Classement global (étape 9 v2.5)
+
+---
+
+## 2026-03-27 — v2.5 Étape 8 : Préparation au déploiement
+
+**Fait :**
+- `client/src/api.js` : `BASE` utilise désormais `import.meta.env.VITE_API_URL` — en dev la variable est vide et le proxy Vite prend le relais, en prod elle pointe sur l'URL Fly.io
+- `client/src/pages/Admin.jsx` : même correction — ajout de `API_BASE` calculée depuis `VITE_API_URL`, les deux `fetch` admin utilisent cette constante
+- `server/database.js` : chemin SQLite configurable via `process.env.DATABASE_PATH` — en dev fichier local `server/score26.db`, en prod `/data/score26.db` (volume persistant Fly.io)
+- `client/vite.config.js` : urlPattern Workbox passé de regex `/^\/api\//` à fonction `({ url }) => url.pathname.startsWith('/api/')` — fonctionne sur URLs relatives (dev) et absolues cross-origin (prod)
+- `server/.env.example` : fichier de référence documentant toutes les variables d'environnement nécessaires en prod (CORS_ORIGIN, DATABASE_PATH, ADMIN_TOKEN, clés API, VAPID)
+
+**Fichiers :** `api.js`, `Admin.jsx`, `database.js`, `vite.config.js`, `.env.example` (nouveau)
+
+**Décisions :**
+- `VITE_API_URL` vide en dev = comportement identique à avant (proxy Vite transparent)
+- `DATABASE_PATH` optionnel en dev : si absent, SQLite reste dans `server/` comme avant
+- `.env.example` commité dans le repo (contrairement à `.env`) : sert de documentation pour configurer Fly.io et pour les futurs contributeurs
+- Workbox pattern en fonction plutôt qu'en regex : plus robuste face aux URLs absolues cross-origin vers Fly.io
+
+**Suivant :** Installer flyctl, créer compte Fly.io, lancer `fly launch` dans `/server`
