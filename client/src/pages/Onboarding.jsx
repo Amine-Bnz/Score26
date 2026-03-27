@@ -47,7 +47,7 @@ export default function Onboarding({ lang, onComplete }) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-6">
       {/* Logo */}
       <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-        score26
+        score<span className="text-blue-500">26</span>
       </h1>
       <p className="text-gray-500 dark:text-gray-400 text-sm mb-10">
         {t(lang, 'welcome')}

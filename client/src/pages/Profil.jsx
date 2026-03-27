@@ -34,7 +34,10 @@ export default function Profil({ userId, lang }) {
   const shareCardRef              = useRef(null)
 
   useEffect(() => {
-    getUser(userId).then(data => { setUser(data); setLoading(false) })
+    getUser(userId)
+      .then(data => { setUser(data) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [userId])
 
   // Vérifie l'état des notifications au montage
@@ -100,23 +103,27 @@ export default function Profil({ userId, lang }) {
   async function handleShare() {
     if (!shareCardRef.current || sharing) return
     setSharing(true)
-    const img = shareCardRef.current.querySelector('img')
-    if (img && !img.complete) {
-      await new Promise(resolve => { img.onload = resolve; img.onerror = resolve })
+    try {
+      const img = shareCardRef.current.querySelector('img')
+      if (img && !img.complete) {
+        await new Promise(resolve => { img.onload = resolve; img.onerror = resolve })
+      }
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: null, useCORS: true, scale: 2,
+      })
+      const link = document.createElement('a')
+      link.download = `score26-${user.pseudo}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    } catch (err) {
+      console.error('[share]', err)
+    } finally {
+      setSharing(false)
     }
-    const canvas = await html2canvas(shareCardRef.current, {
-      backgroundColor: null, useCORS: true, scale: 2,
-    })
-    const link = document.createElement('a')
-    link.download = `score26-${user.pseudo}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
-    setSharing(false)
   }
 
-  if (loading) {
-    return <div className="flex justify-center py-20 text-slate-400">...</div>
-  }
+  if (loading) return <div className="flex justify-center py-20 text-slate-400">...</div>
+  if (!user)   return <div className="flex justify-center py-20 text-slate-400">—</div>
 
   const stats = user.stats ?? { scores_exacts: 0, bonnes_issues: 0, rates: 0, score_total: 0 }
 

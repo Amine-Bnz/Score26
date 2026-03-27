@@ -476,3 +476,32 @@ cd server && npm test
 - Workbox pattern en fonction plutôt qu'en regex : plus robuste face aux URLs absolues cross-origin vers Fly.io
 
 **Suivant :** Installer flyctl, créer compte Fly.io, lancer `fly launch` dans `/server`
+
+---
+
+## 2026-03-27 — v2.5 Étape 8 : Déploiement (Fly.io + Vercel)
+
+**Fait :**
+- `server/Dockerfile` : image `node:20-slim` + outils de compilation pour `better-sqlite3` (module natif C++), `npm ci --omit=dev`, `NODE_ENV=production`
+- `server/.dockerignore` : exclut `node_modules`, `*.db`, `.env`, `tests/`, `generate-vapid.js`
+- `server/fly.toml` : config Fly.io — app `score26`, région `cdg` (Paris), volume `score26_data` monté sur `/data`, 256 MB RAM, auto-stop activé (tier gratuit)
+- App Fly.io créée : `score26`
+- Volume persistant créé : `score26_data` (1 Go, région cdg, chiffré, snapshots automatiques)
+- Secrets Fly.io configurés : `ADMIN_TOKEN`, `CORS_ORIGIN=https://score26.vercel.app`
+- Seed lancé en prod via `flyctl ssh console -C "node seed.js"` → 72 matchs insérés
+- Frontend déployé sur Vercel — Root Directory `client`, `VITE_API_URL=https://score26.fly.dev`
+- **App en production et fonctionnelle** ✓
+
+**URLs de production :**
+- Frontend : https://score26.vercel.app
+- Backend : https://score26.fly.dev
+
+**Fichiers :** `Dockerfile` (nouveau), `.dockerignore` (nouveau), `fly.toml` (nouveau)
+
+**Décisions :**
+- `node:20-slim` + install des outils build : image plus légère que `node:20` full tout en supportant les modules natifs C++
+- Auto-stop activé : la machine s'endort sans trafic et redémarre en ~1s — acceptable pour ce use case, économise le quota gratuit Fly.io
+- CORS_ORIGIN configuré comme secret Fly (pas dans fly.toml) : évite d'exposer l'URL en clair dans le repo
+- `flyctl ssh console -C "node seed.js"` : seed lancé directement sur la machine prod, sans exposer de route HTTP dédiée
+
+**Suivant :** Classement global (étape 9 v2.5)

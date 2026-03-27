@@ -108,7 +108,6 @@ const teamNamesEN = {
   // UEFA
   'Autriche':   'Austria',
   'Écosse':     'Scotland',
-  'Angleterre': 'England',
   // CAF
   'Nigeria':    'Nigeria',
   'Cameroun':   'Cameroon',
