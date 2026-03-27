@@ -349,3 +349,19 @@ Résumé des 7 axes :
 - `generate-icons.mjs` à relancer si les SVG sources changent
 
 **Suivant :** Page 404 (étape 2 v2.5)
+
+---
+
+## 2026-03-27 — v2.5 Étape 2 : Page 404
+
+**Fait :**
+- `client/src/pages/NotFound.jsx` : composant simple — "404" en bleu, message, bouton retour vers `/`
+- `client/src/main.jsx` : routing URL explicite — `/` → App, `/admin` → Admin, tout le reste → NotFound
+
+**Fichiers :** `NotFound.jsx` (nouveau), `main.jsx`
+
+**Décisions :**
+- `window.location.replace('/')` plutôt que `href` : ne laisse pas l'URL 404 dans l'historique du navigateur
+- Routing dans `main.jsx` (pas dans `App.jsx`) : cohérent avec la détection `/admin` déjà en place
+
+**Suivant :** Feedback notifications bloquées (étape 3 v2.5)

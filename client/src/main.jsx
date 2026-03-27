@@ -3,11 +3,15 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import Admin from './pages/Admin.jsx'
+import NotFound from './pages/NotFound.jsx'
 
 const root = createRoot(document.getElementById('root'))
+const path = window.location.pathname
 
-if (window.location.pathname === '/admin') {
+if (path === '/admin') {
   root.render(<StrictMode><Admin /></StrictMode>)
-} else {
+} else if (path === '/') {
   root.render(<StrictMode><App /></StrictMode>)
+} else {
+  root.render(<StrictMode><NotFound /></StrictMode>)
 }
