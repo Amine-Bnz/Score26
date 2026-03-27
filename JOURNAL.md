@@ -365,3 +365,20 @@ Résumé des 7 axes :
 - Routing dans `main.jsx` (pas dans `App.jsx`) : cohérent avec la détection `/admin` déjà en place
 
 **Suivant :** Feedback notifications bloquées (étape 3 v2.5)
+
+---
+
+## 2026-03-27 — v2.5 Étape 3 : Feedback notifications bloquées
+
+**Fait :**
+- `i18n.js` : nouvelles clés `notifsBlocked` (titre) et `notifsBlockedHint` (instructions cadenas) en FR et EN
+- `Profil.jsx` — `NotifButton` : quand statut `denied`, affichage d'un bloc ambré avec icône 🔕, titre et instructions pour réactiver via le cadenas du navigateur
+
+**Fichiers :** `i18n.js`, `Profil.jsx`
+
+**Décisions :**
+- Bloc ambré (warning) plutôt que rouge : ce n'est pas une erreur, c'est un état réversible par l'utilisateur
+- Instructions génériques "cadenas dans la barre d'adresse" : fonctionne sur Chrome, Edge, Firefox et Safari sans detection d'user-agent
+- Le bloc remplace le bouton (pas de bouton cliquable quand `denied` car `requestPermission()` est silencieusement ignoré par le navigateur)
+
+**Suivant :** Gestion perte de connexion (étape 4 v2.5)

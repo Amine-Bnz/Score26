@@ -25,7 +25,8 @@ const translations = {
     groupLabel: 'Groupe',
     enableNotifs: 'Activer les notifications',
     disableNotifs: 'Notifications activées',
-    notifsBlocked: 'Notifications bloquées',
+    notifsBlocked: 'Notifications bloquées par le navigateur',
+    notifsBlockedHint: 'Pour les réactiver : clique sur le cadenas 🔒 dans la barre d\'adresse de ton navigateur, puis autorise les notifications pour ce site.',
     notifsUnsupported: 'Notifications non disponibles',
   },
   en: {
@@ -54,7 +55,8 @@ const translations = {
     groupLabel: 'Group',
     enableNotifs: 'Enable notifications',
     disableNotifs: 'Notifications enabled',
-    notifsBlocked: 'Notifications blocked',
+    notifsBlocked: 'Notifications blocked by your browser',
+    notifsBlockedHint: 'To re-enable them: click the lock icon 🔒 in your browser\'s address bar, then allow notifications for this site.',
     notifsUnsupported: 'Notifications unavailable',
   },
 }

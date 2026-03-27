@@ -184,9 +184,14 @@ function NotifButton({ status, lang, onEnable, onDisable }) {
 
   if (status === 'denied') {
     return (
-      <p className="text-xs text-slate-400 dark:text-slate-600 text-center">
-        {t(lang, 'notifsBlocked')}
-      </p>
+      <div className="w-full rounded-2xl bg-amber-50 dark:bg-amber-950/30 ring-1 ring-amber-200 dark:ring-amber-800/40 p-4 flex flex-col gap-1.5">
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+          🔕 {t(lang, 'notifsBlocked')}
+        </p>
+        <p className="text-xs text-amber-600/80 dark:text-amber-500/70 leading-relaxed">
+          {t(lang, 'notifsBlockedHint')}
+        </p>
+      </div>
     )
   }
 
