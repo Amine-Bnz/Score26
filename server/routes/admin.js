@@ -8,8 +8,10 @@ function checkToken(req, res, next) {
   const token = req.query.token || req.headers['x-admin-token'];
   const expected = process.env.ADMIN_TOKEN;
   if (!expected || expected === 'change_this_before_deploy' || token !== expected) {
+    console.warn(`[admin] Accès refusé — IP: ${req.ip} ${req.method} ${req.path}`);
     return res.status(401).json({ error: 'Token invalide.' });
   }
+  console.log(`[admin] Accès — IP: ${req.ip} ${req.method} ${req.path}`);
   next();
 }
 

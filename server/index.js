@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
+const helmet  = require('helmet');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -11,7 +12,14 @@ const { syncLive }                = require('./services/apiFootball');
 const { calculerPoints }          = require('./scoring');
 const { envoyerNotifAvantMatch }  = require('./services/pushNotifications');
 
-app.use(cors());
+// Sécurité : headers HTTP (X-Content-Type-Options, X-Frame-Options, etc.)
+app.use(helmet());
+
+// CORS : ouvert en dev, restreint au domaine en prod via CORS_ORIGIN dans .env
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+}));
+
 app.use(express.json());
 
 app.use('/api/users',  require('./routes/users'));

@@ -3,7 +3,9 @@
     "allow": [
       "Bash(node -e \":*)",
       "Bash(node seed.js)",
-      "Bash(node -e \"require\\(''web-push''\\); console.log\\(''ok''\\)\")"
+      "Bash(node -e \"require\\(''web-push''\\); console.log\\(''ok''\\)\")",
+      "Bash(node -e \"require\\(''helmet''\\); console.log\\(''ok''\\)\")",
+      "Bash(npm install:*)"
     ]
   }
 }

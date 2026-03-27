@@ -36,6 +36,15 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg}'],
         importScripts: ['/push-sw.js'],
+        // Les appels API ne doivent jamais être mis en cache par le service worker
+        // NetworkOnly = le SW laisse passer la requête sans interception
+        // En mode offline, la requête échoue proprement (network error)
+        runtimeCaching: [
+          {
+            urlPattern: /^\/api\//,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
     }),
   ],

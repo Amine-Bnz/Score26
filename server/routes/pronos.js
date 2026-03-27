@@ -11,6 +11,13 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: 'Champs manquants : user_id, match_id, score_predit_a, score_predit_b requis.' });
   }
 
+  // Sanitisation : les scores doivent être des entiers entre 0 et 99
+  const a = parseInt(score_predit_a, 10);
+  const b = parseInt(score_predit_b, 10);
+  if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a > 99 || b > 99) {
+    return res.status(400).json({ error: 'Scores invalides : entiers entre 0 et 99 requis.' });
+  }
+
   // Vérification que le match existe et que le coup d'envoi n'est pas passé
   const match = db.prepare('SELECT id, date_coup_envoi FROM matchs WHERE id = ?').get(match_id);
   if (!match) {
@@ -30,7 +37,7 @@ router.post('/', (req, res) => {
     ON CONFLICT(user_id, match_id) DO UPDATE SET
       score_predit_a = excluded.score_predit_a,
       score_predit_b = excluded.score_predit_b
-  `).run(user_id, match_id, score_predit_a, score_predit_b);
+  `).run(user_id, match_id, a, b);
 
   const prono = db.prepare('SELECT * FROM pronos WHERE user_id = ? AND match_id = ?').get(user_id, match_id);
 
