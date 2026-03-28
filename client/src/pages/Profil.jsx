@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 import { getUser, getVapidPublicKey, subscribePush, unsubscribePush } from '../api'
 import { t } from '../i18n'
+import LegalModal from '../components/LegalModal'
 
 // Convertit la clé VAPID base64url en Uint8Array (requis par pushManager.subscribe)
 function urlBase64ToUint8Array(base64String) {
@@ -31,6 +32,7 @@ export default function Profil({ userId, lang }) {
   const [loading, setLoading]     = useState(true)
   const [sharing, setSharing]     = useState(false)
   const [notifStatus, setNotifStatus] = useState('checking')
+  const [showLegal, setShowLegal] = useState(false)
   const shareCardRef              = useRef(null)
 
   useEffect(() => {
@@ -176,6 +178,16 @@ export default function Profil({ userId, lang }) {
         onEnable={handleSubscribePush}
         onDisable={handleUnsubscribePush}
       />
+
+      {/* Lien politique de confidentialité */}
+      <button
+        onClick={() => setShowLegal(true)}
+        className="text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-colors pb-2"
+      >
+        {lang === 'fr' ? 'Politique de confidentialité' : 'Privacy Policy'}
+      </button>
+
+      {showLegal && <LegalModal lang={lang} onClose={() => setShowLegal(false)} />}
 
       {/* Card de partage hors-écran */}
       <div ref={shareCardRef} style={{ position: 'absolute', left: '-9999px', top: 0 }}>

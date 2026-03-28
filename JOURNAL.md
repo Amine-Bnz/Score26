@@ -505,3 +505,42 @@ cd server && npm test
 - `flyctl ssh console -C "node seed.js"` : seed lancé directement sur la machine prod, sans exposer de route HTTP dédiée
 
 **Suivant :** Classement global (étape 9 v2.5)
+
+---
+
+## 2026-03-27 — Corrections post-scan + notes lancement public
+
+**Fait :**
+- `Onboarding.jsx` : "26" en bleu (`text-blue-500`) comme dans le Header et la modale À propos
+- `Profil.jsx` : `getUser()` enveloppé dans `.finally(() => setLoading(false))` + garde `if (!user)` — plus de spinner infini si l'API plante
+- `Profil.jsx` : `handleShare()` enveloppé dans `try/catch/finally` — le bouton se débloque toujours même si html2canvas échoue
+- `i18n.js` : doublon `'Angleterre': 'England'` supprimé (ligne 111)
+
+**Fichiers :** `Onboarding.jsx`, `Profil.jsx`, `i18n.js`
+
+**Checklist pré-lancement (~1 semaine avant le 11 juin 2026) :**
+- [ ] Désactiver l'auto-stop Fly.io (`auto_stop_machines = 'off'`, `min_machines_running = 1`) + `flyctl deploy`
+- [ ] Acheter score26.fr (~7€) et le pointer sur Vercel (DNS CNAME)
+- [ ] Mettre à jour les équipes barrages UEFA dans `seed.js` (résultats connus le 31 mars 2026) + relancer le seed en prod
+- [ ] Ouvrir compte Google Play Developer (25$) + soumettre via PWABuilder
+- [ ] Vérifier que `CORS_ORIGIN` est à jour sur Fly.io si le domaine change
+
+**Suivant :** Page Politique de confidentialité (obligatoire Play Store + RGPD)
+
+---
+
+## 2026-03-27 — Politique de confidentialité
+
+**Fait :**
+- `client/src/components/LegalModal.jsx` : modale bilingue FR/EN — données collectées, utilisation, DiceBear, droits RGPD, contact. Placeholder `contact@score26.fr` à remplacer par la vraie adresse
+- `client/src/pages/Profil.jsx` : import + état `showLegal` + petit lien discret en bas de la page + rendu conditionnel de la modale
+
+**Fichiers :** `LegalModal.jsx` (nouveau), `Profil.jsx`
+
+**Décisions :**
+- Modale plutôt que page dédiée : pas de route supplémentaire, accès discret depuis le profil
+- `items-center` + `py-16` sur le backdrop : centrage vertical garanti, jamais caché par le notch (iPhone XR/11) ni par la navbar
+- Contenu minimal adapté à Score26 : pas d'email, pas de paiement, juste pseudo + pronos + UUID localStorage
+- Email de contact en constante `CONTACT_EMAIL` en haut du fichier → une seule ligne à changer
+
+**TODO :** remplacer `contact@score26.fr` dans `LegalModal.jsx` ligne 5 quand l'adresse est prête
