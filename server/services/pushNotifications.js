@@ -26,6 +26,8 @@ function initWebPush() {
 async function envoyerNotifAvantMatch(db) {
   if (!initWebPush()) return
 
+  // D'abord filtrer les matchs dans la fenêtre (sous-requête), puis joindre les subscriptions
+  // Évite le produit cartésien N_matchs × N_subscriptions
   const lignes = db.prepare(`
     SELECT
       ps.endpoint,
@@ -35,17 +37,19 @@ async function envoyerNotifAvantMatch(db) {
       m.id        AS match_id,
       m.equipe_a,
       m.equipe_b
-    FROM matchs m
-    CROSS JOIN push_subscriptions ps
+    FROM (
+      SELECT id, equipe_a, equipe_b
+      FROM matchs
+      WHERE statut = 'a_venir'
+        AND date_coup_envoi >= datetime('now', '+55 minutes')
+        AND date_coup_envoi <  datetime('now', '+65 minutes')
+    ) m
+    JOIN push_subscriptions ps
     LEFT JOIN pronos p
       ON p.match_id = m.id AND p.user_id = ps.user_id
     LEFT JOIN notifs_envoyees ne
       ON ne.match_id = m.id AND ne.user_id = ps.user_id
-    WHERE
-      m.statut = 'a_venir'
-      AND m.date_coup_envoi >= datetime('now', '+55 minutes')
-      AND m.date_coup_envoi <  datetime('now', '+65 minutes')
-      AND p.id IS NULL
+    WHERE p.id IS NULL
       AND ne.user_id IS NULL
   `).all()
 

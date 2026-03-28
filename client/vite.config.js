@@ -52,8 +52,22 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Fonctionne en dev (URL relatives) et en prod (URL absolues vers Fly.io)
-          urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
             handler: 'NetworkOnly',
+          },
+          {
+            // Cache les avatars DiceBear localement (CacheFirst, TTL 30 jours)
+            // Évite de retélécharger à chaque rendu + fonctionne offline
+            urlPattern: ({ url }) => url.hostname === 'api.dicebear.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'dicebear-avatars',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
           },
         ],
       },

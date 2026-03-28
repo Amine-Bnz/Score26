@@ -43,6 +43,25 @@ app.listen(PORT, () => {
   lancerPolling();
 });
 
+// Polling avec backoff exponentiel : délai ×2 à chaque erreur (max 30 min), reset au succès
+function pollWithBackoff(fn, baseMs, label) {
+  const MAX_DELAY = 30 * 60 * 1000;
+  let failures = 0;
+  async function tick() {
+    try {
+      await fn();
+      failures = 0;
+    } catch (e) {
+      failures++;
+      const delay = Math.min(baseMs * Math.pow(2, failures), MAX_DELAY);
+      logger.error({ err: e, nextRetryMs: delay }, `[${label}] Erreur (tentative ${failures})`);
+    }
+    const nextDelay = failures === 0 ? baseMs : Math.min(baseMs * Math.pow(2, failures), MAX_DELAY);
+    setTimeout(tick, nextDelay);
+  }
+  setTimeout(tick, baseMs);
+}
+
 function lancerPolling() {
   // ── Verrouillage automatique des pronos — toutes les 60s ─────────────────
   setInterval(() => {
@@ -63,36 +82,24 @@ function lancerPolling() {
 
   // ── Résultats finaux (football-data.org) — toutes les 10 min ──────────────
   if (fdPret) {
-    setInterval(async () => {
-      try { await syncResultats(db, { calculerPoints }); }
-      catch (e) { logger.error({ err: e }, '[auto-sync résultats] Erreur'); }
-    }, 10 * 60 * 1000);
+    pollWithBackoff(() => syncResultats(db, { calculerPoints }), 10 * 60 * 1000, 'auto-sync résultats');
     logger.info('Auto-sync résultats activé (football-data.org, toutes les 10 min)');
   } else {
     logger.warn('Auto-sync résultats désactivé — configurer FOOTBALL_DATA_KEY dans .env');
   }
 
   // ── Live scores (API-Football) — toutes les 3 min ─────────────────────────
-  // La fonction syncLive vérifie d'abord si un match est en cours avant d'appeler l'API
-  // → économise les 100 req/jour du tier gratuit
   if (afPret) {
-    setInterval(async () => {
-      try { await syncLive(db); }
-      catch (e) { logger.error({ err: e }, '[auto-sync live] Erreur'); }
-    }, 3 * 60 * 1000);
+    pollWithBackoff(() => syncLive(db), 3 * 60 * 1000, 'auto-sync live');
     logger.info('Auto-sync live activé (API-Football, toutes les 3 min)');
   } else {
     logger.warn('Auto-sync live désactivé — configurer API_FOOTBALL_KEY dans .env');
   }
 
   // ── Notifications push — toutes les 5 min ─────────────────────────────────
-  // Envoie une notif 1h avant chaque match pour les users sans prono
   const vapidPret = process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PUBLIC_KEY !== 'your_vapid_public_key';
   if (vapidPret) {
-    setInterval(async () => {
-      try { await envoyerNotifAvantMatch(db); }
-      catch (e) { logger.error({ err: e }, '[push notif] Erreur'); }
-    }, 5 * 60 * 1000);
+    pollWithBackoff(() => envoyerNotifAvantMatch(db), 5 * 60 * 1000, 'push notif');
     logger.info('Notifications push activées (VAPID, toutes les 5 min)');
   } else {
     logger.warn('Notifications push désactivées — générer les clés avec : node generate-vapid.js');

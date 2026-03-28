@@ -84,9 +84,10 @@ function TeamBlock({ fullName, lang }) {
 export function MatchCardAvenir({ match, userId, lang, isOnline = true, highlight = false }) {
   const [scoreA, setScoreA] = useState(match.score_predit_a ?? '')
   const [scoreB, setScoreB] = useState(match.score_predit_b ?? '')
-  const [saved,  setSaved]  = useState(false)
+  const [saved,  setSaved]  = useState(false)  // false | 'saving' | 'ok' | 'error'
   const debounceRef = useRef(null)
   const savedTimerRef = useRef(null)
+  const prevScoreRef = useRef({ a: match.score_predit_a ?? '', b: match.score_predit_b ?? '' })
 
   // Nettoyage des timers au démontage (évite setState sur composant démonté)
   useEffect(() => {
@@ -107,12 +108,24 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
       const b = isA ? autre : parsed
       if (a === '' || b === '') return
       if (!isOnline) return
+      // Optimistic : affiche "saving" immédiatement
+      setSaved('saving')
       upsertProno({ user_id: userId, match_id: match.id, score_predit_a: a, score_predit_b: b })
-        .then(() => {
+        .then(res => {
+          if (res.error) throw new Error(res.error)
           navigator.vibrate?.(10)
-          setSaved(true)
+          prevScoreRef.current = { a, b }
+          setSaved('ok')
           clearTimeout(savedTimerRef.current)
           savedTimerRef.current = setTimeout(() => setSaved(false), 700)
+        })
+        .catch(() => {
+          // Rollback aux dernières valeurs sauvegardées
+          setScoreA(prevScoreRef.current.a)
+          setScoreB(prevScoreRef.current.b)
+          setSaved('error')
+          clearTimeout(savedTimerRef.current)
+          savedTimerRef.current = setTimeout(() => setSaved(false), 1500)
         })
     }, 600)
   }
@@ -149,7 +162,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
             disabled={isVerrouille}
             onChange={e => handleChange(e.target.value, setScoreA, scoreB, true)}
             className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
-              ${saved ? 'border-solid border-green-400' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
+              ${saved === 'ok' ? 'border-solid border-green-400' : saved === 'error' ? 'border-solid border-red-400' : saved === 'saving' ? 'border-solid border-blue-300' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
           />
           <span className="text-slate-300 dark:text-slate-600 font-bold text-lg select-none">—</span>
           <input
@@ -158,7 +171,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
             disabled={isVerrouille}
             onChange={e => handleChange(e.target.value, setScoreB, scoreA, false)}
             className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
-              ${saved ? 'border-solid border-green-400' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
+              ${saved === 'ok' ? 'border-solid border-green-400' : saved === 'error' ? 'border-solid border-red-400' : saved === 'saving' ? 'border-solid border-blue-300' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
           />
         </div>
 
