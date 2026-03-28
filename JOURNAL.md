@@ -544,3 +544,101 @@ cd server && npm test
 - Email de contact en constante `CONTACT_EMAIL` en haut du fichier → une seule ligne à changer
 
 **TODO :** remplacer `contact@score26.fr` dans `LegalModal.jsx` ligne 5 quand l'adresse est prête
+
+---
+
+## 2026-03-28 — Scope v3 : Review complète & corrections
+
+Résultat d'un audit complet du codebase (tous les fichiers frontend + backend + config). Les corrections sont regroupées par lot, à réaliser dans l'ordre.
+
+---
+
+### Lot 1 — Sécurité (critique)
+
+**Étape 1 : Protéger `PATCH /api/matchs/:id`**
+La route `server/routes/matchs.js` ligne 48 permet à **n'importe qui** de modifier le score réel d'un match et de recalculer les points, sans authentification. Seule `/api/admin/matchs/:id` est protégée par `checkToken`. Un attaquant peut fausser tout le scoring.
+→ Ajouter un middleware `checkToken` (ou supprimer la route si `/api/admin/matchs/:id` suffit).
+
+**Étape 2 : Vérifier l'existence du user dans `POST /api/pronos`**
+`server/routes/pronos.js` ne vérifie pas que `user_id` correspond à un user réel. Le FK constraint empêche l'insertion mais retourne un crash 500 au lieu d'un 400 propre.
+→ Ajouter un `SELECT id FROM users WHERE id = ?` avant l'upsert.
+
+**Étape 3 : Rate-limit sur `POST /api/pronos`**
+Aucune limitation. Un attaquant pourrait spammer des millions de requêtes.
+→ Ajouter `express-rate-limit` (ex: 60 req/min par IP).
+
+---
+
+### Lot 2 — Robustesse API client (haute priorité)
+
+**Étape 4 : Vérifier `res.ok` dans les fonctions API**
+`client/src/api.js` : toutes les fonctions font `res.json()` sans vérifier `res.ok`. Si le serveur renvoie 404 ou 500, le client parse un objet `{ error: '...' }` et l'affiche comme des données valides (pseudo undefined, stats cassées).
+→ Ajouter un check `if (!res.ok)` dans chaque fonction et retourner `{ error: ... }` proprement.
+
+**Étape 5 : Distinguer rate-limit (429) vs pseudo pris (409) dans Onboarding**
+Quand le rate-limiter bloque la création de compte, `createUser` parse la 429 et l'Onboarding affiche "Ce pseudo est déjà pris" alors que c'est un rate-limit.
+→ Vérifier `res.status` côté Onboarding et afficher un message adapté.
+
+---
+
+### Lot 3 — Persistance préférences utilisateur (haute priorité)
+
+**Étape 6 : Persister la langue en localStorage**
+Le toggle FR/EN dans le Header remet à `'fr'` à chaque rechargement. Un anglophone doit re-switcher à chaque visite.
+→ `localStorage.setItem('score26_lang', lang)` + init depuis localStorage dans `App.jsx`.
+
+**Étape 7 : Persister le thème en localStorage**
+Le thème revient à `'dark'` par défaut à chaque rechargement.
+→ Même pattern que la langue.
+
+---
+
+### Lot 4 — Performance & qualité (moyenne priorité)
+
+**Étape 8 : Pause du polling quand l'app est en background**
+`useAutoRefresh.js` : le `setInterval` tourne même quand le tab n'est pas visible. Sur mobile, ça consomme batterie et bandwidth pour rien.
+→ Ajouter un listener `visibilitychange` pour pause/resume l'interval.
+
+**Étape 9 : Déplacer le verrouillage des pronos hors du GET**
+`GET /api/matchs` exécute un `UPDATE pronos SET verrouille = 1` à **chaque** requête. Avec polling 60s × N users, ça fait beaucoup d'écritures inutiles.
+→ Le déplacer dans un job périodique (setInterval toutes les 60s dans `index.js`).
+
+**Étape 10 : Optimiser `calculerPoints` (N+1 queries)**
+`scoring.js` fait un `SELECT COUNT(*)` par prono. Avec 1000 users sur un match, ça fait 1000 queries.
+→ Pré-calculer les comptes par groupe `(score_predit_a, score_predit_b)` en un seul SELECT avant la boucle.
+
+---
+
+### Lot 5 — Cohérence & polish (basse priorité)
+
+**Étape 11 : Remplacer les `console.log` restants par `logger`**
+Fichiers concernés : `pushNotifications.js`, `routes/sync.js`, `services/footballData.js`, `services/apiFootball.js`. Incohérent avec le reste du serveur qui utilise pino.
+
+**Étape 12 : `initWebPush()` une seule fois au démarrage**
+`pushNotifications.js` appelle `webPush.setVapidDetails()` à chaque tick (toutes les 5 min). Inutile.
+→ Initialiser une seule fois dans `index.js` ou via un flag `initialized`.
+
+**Étape 13 : Limiter le stagger animation**
+Avec 72 matchs, le dernier a un delay de 3.6s (`i * 50ms`). Plafonner à ~10 éléments (500ms max).
+
+**Étape 14 : Supprimer les doublons dans i18n**
+`Cameroun` et `Tunisie` apparaissent deux fois dans `teamNamesEN`. Code mort.
+
+**Étape 15 : Notification push bilingue**
+Le texte de la notif push est toujours en français. Les users anglophones ne comprendront pas.
+→ Option 1 : stocker `lang` dans la table `users` (nouvelle colonne).
+→ Option 2 : envoyer un texte bilingue court ("FR: coup d'envoi dans 1h / EN: kickoff in 1h").
+
+---
+
+### Résumé par priorité
+
+| Lot | Nom | Étapes | Priorité |
+|-----|-----|--------|----------|
+| 1 | Sécurité | 1–3 | Critique — à faire en premier |
+| 2 | Robustesse API client | 4–5 | Haute |
+| 3 | Persistance préférences | 6–7 | Haute |
+| 4 | Performance & qualité | 8–10 | Moyenne |
+| 5 | Cohérence & polish | 11–15 | Basse |
+
+**Suivant :** Lot 1 — Étape 1 : Protéger `PATCH /api/matchs/:id`

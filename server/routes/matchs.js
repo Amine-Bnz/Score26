@@ -1,7 +1,6 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
-const { calculerPoints } = require('../scoring');
 
 // GET /api/matchs?user_id=xxx
 // Retourne tous les matchs avec : prono de l'user, données live si en cours
@@ -42,27 +41,6 @@ router.get('/', (req, res) => {
   `).all(user_id ?? null);
 
   return res.json(matchs);
-});
-
-// PATCH /api/matchs/:id — saisie manuelle du score réel (admin / fallback)
-router.patch('/:id', (req, res) => {
-  const { score_reel_a, score_reel_b } = req.body;
-
-  if (score_reel_a == null || score_reel_b == null) {
-    return res.status(400).json({ error: 'score_reel_a et score_reel_b requis.' });
-  }
-
-  const match = db.prepare('SELECT id FROM matchs WHERE id = ?').get(req.params.id);
-  if (!match) return res.status(404).json({ error: 'Match introuvable.' });
-
-  db.prepare(`
-    UPDATE matchs SET score_reel_a = ?, score_reel_b = ?, statut = 'termine'
-    WHERE id = ?
-  `).run(score_reel_a, score_reel_b, req.params.id);
-
-  calculerPoints(req.params.id);
-
-  return res.json(db.prepare('SELECT * FROM matchs WHERE id = ?').get(req.params.id));
 });
 
 module.exports = router;

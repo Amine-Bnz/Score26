@@ -1,10 +1,20 @@
-const express = require('express');
-const router = express.Router();
-const db = require('../database');
+const express   = require('express');
+const rateLimit = require('express-rate-limit');
+const router    = express.Router();
+const db        = require('../database');
+
+// 60 pronos max par IP par minute
+const limiterPronos = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes. Réessaie dans 1 minute.' },
+});
 
 // POST /api/pronos — créer ou mettre à jour un prono (upsert)
 // Body : { user_id, match_id, score_predit_a, score_predit_b }
-router.post('/', (req, res) => {
+router.post('/', limiterPronos, (req, res) => {
   const { user_id, match_id, score_predit_a, score_predit_b } = req.body;
 
   if (!user_id || !match_id || score_predit_a == null || score_predit_b == null) {
@@ -16,6 +26,12 @@ router.post('/', (req, res) => {
   const b = parseInt(score_predit_b, 10);
   if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a > 99 || b > 99) {
     return res.status(400).json({ error: 'Scores invalides : entiers entre 0 et 99 requis.' });
+  }
+
+  // Vérification que le user existe
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(user_id);
+  if (!user) {
+    return res.status(404).json({ error: 'Utilisateur introuvable.' });
   }
 
   // Vérification que le match existe et que le coup d'envoi n'est pas passé
