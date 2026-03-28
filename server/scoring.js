@@ -11,17 +11,23 @@ function calculerPoints(matchId) {
 
   const totalPronos = pronos.length;
 
+  // Pré-calcul des comptes par groupe de prono (un seul SELECT au lieu de N)
+  const comptes = {};
+  const rows = db.prepare(`
+    SELECT score_predit_a, score_predit_b, COUNT(*) AS nb
+    FROM pronos WHERE match_id = ?
+    GROUP BY score_predit_a, score_predit_b
+  `).all(matchId);
+  for (const r of rows) {
+    comptes[`${r.score_predit_a}-${r.score_predit_b}`] = r.nb;
+  }
+
   const calculer = db.transaction(() => {
     for (const prono of pronos) {
       const pointsBase = calculerPointsBase(prono, match);
 
       // Cote cachée : 1 / (nb_même_prono / total), plafond x5
-      // "même prono" = même score exact prédit
-      const nbMemeProno = db.prepare(`
-        SELECT COUNT(*) AS nb FROM pronos
-        WHERE match_id = ? AND score_predit_a = ? AND score_predit_b = ?
-      `).get(matchId, prono.score_predit_a, prono.score_predit_b).nb;
-
+      const nbMemeProno = comptes[`${prono.score_predit_a}-${prono.score_predit_b}`] || 1;
       const ratio = nbMemeProno / totalPronos;
       const cote = Math.min(1 / ratio, 5);
 

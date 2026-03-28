@@ -44,6 +44,18 @@ app.listen(PORT, () => {
 });
 
 function lancerPolling() {
+  // ── Verrouillage automatique des pronos — toutes les 60s ─────────────────
+  setInterval(() => {
+    try {
+      db.prepare(`
+        UPDATE pronos SET verrouille = 1
+        WHERE verrouille = 0 AND match_id IN (
+          SELECT id FROM matchs WHERE date_coup_envoi <= datetime('now')
+        )
+      `).run();
+    } catch (e) { logger.error({ err: e }, '[verrouillage pronos] Erreur'); }
+  }, 60 * 1000);
+
   const fdKey  = process.env.FOOTBALL_DATA_KEY;
   const afKey  = process.env.API_FOOTBALL_KEY;
   const fdPret = fdKey && fdKey !== 'your_key_here';

@@ -12,8 +12,8 @@ import { useOnlineStatus } from './hooks/useOnlineStatus'
 export default function App() {
   const [userId, setUserId] = useState(null)
   const [page,   setPage]   = useState('avenir') // 'avenir' | 'passes' | 'profil'
-  const [theme,  setTheme]  = useState('dark')
-  const [lang,   setLang]   = useState('fr')
+  const [theme,  setTheme]  = useState(() => localStorage.getItem('score26_theme') || 'dark')
+  const [lang,   setLang]   = useState(() => localStorage.getItem('score26_lang')  || 'fr')
   const isOnline = useOnlineStatus()
 
   // Récupération de l'identité persistée en localStorage
@@ -22,10 +22,16 @@ export default function App() {
     if (id) setUserId(id)
   }, [])
 
-  // Application du thème via la classe CSS sur <html>
+  // Persistance et application du thème
   useEffect(() => {
+    localStorage.setItem('score26_theme', theme)
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
+
+  // Persistance de la langue
+  useEffect(() => {
+    localStorage.setItem('score26_lang', lang)
+  }, [lang])
 
   // Onboarding si pas encore de compte
   if (!userId) {

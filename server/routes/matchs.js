@@ -7,14 +7,6 @@ const db      = require('../database');
 router.get('/', (req, res) => {
   const { user_id } = req.query;
 
-  // Verrouillage automatique des pronos dont le coup d'envoi est passé
-  db.prepare(`
-    UPDATE pronos SET verrouille = 1
-    WHERE verrouille = 0 AND match_id IN (
-      SELECT id FROM matchs WHERE date_coup_envoi <= datetime('now')
-    )
-  `).run();
-
   const matchs = db.prepare(`
     SELECT
       m.id,

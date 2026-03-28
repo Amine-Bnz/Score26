@@ -23,10 +23,23 @@ export function useAutoRefresh(onRefresh, interval = 60_000) {
     markUpdated()
   }
 
-  // Polling silencieux
+  // Polling silencieux — pause quand le tab n'est pas visible (économie batterie/réseau)
   useEffect(() => {
-    const id = setInterval(actualiser, interval)
-    return () => clearInterval(id)
+    let id = setInterval(actualiser, interval)
+
+    function onVisibility() {
+      clearInterval(id)
+      if (document.visibilityState === 'visible') {
+        actualiser() // rafraîchir immédiatement au retour
+        id = setInterval(actualiser, interval)
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [interval])
 
   // Handlers tactiles pour pull-to-refresh

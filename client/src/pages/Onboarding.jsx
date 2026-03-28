@@ -31,7 +31,7 @@ export default function Onboarding({ lang, onComplete }) {
     const res = await createUser({ id, pseudo: trimmed, avatar_seed })
 
     if (res.error) {
-      setError(t(lang, 'pseudoTaken'))
+      setError(res.status === 429 ? t(lang, 'tooManyAttempts') : t(lang, 'pseudoTaken'))
       setLoading(false)
       return
     }

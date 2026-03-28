@@ -12,6 +12,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true }) {
 
   function charger() {
     return getMatchs(userId).then(data => {
+      if (data.error || !Array.isArray(data)) { setLoading(false); return }
       // En cours : statut explicitement 'en_cours'
       setEnCours(data.filter(m => m.statut === 'en_cours'))
       // À venir : pas encore de score réel ET pas en cours
