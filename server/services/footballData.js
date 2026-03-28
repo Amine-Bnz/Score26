@@ -2,6 +2,7 @@
 // Tier gratuit : 10 req/min, pas de cap journalier, CDM 2026 couverte
 // Doc : https://docs.football-data.org/general/v4/index.html
 
+const logger = require('../logger');
 const BASE = 'https://api.football-data.org/v4';
 
 // Mapping noms anglais football-data.org → noms français + emoji stockés en base
@@ -92,7 +93,7 @@ async function syncCalendrier(db) {
     const nomA = TEAM_MAP[m.homeTeam.name] ?? TEAM_MAP[m.homeTeam.shortName];
     const nomB = TEAM_MAP[m.awayTeam.name] ?? TEAM_MAP[m.awayTeam.shortName];
     if (!nomA || !nomB) {
-      console.warn(`[sync] Équipe inconnue : "${m.homeTeam.name}" ou "${m.awayTeam.name}"`);
+      logger.warn(`[sync] Équipe inconnue : "${m.homeTeam.name}" ou "${m.awayTeam.name}"`);
       continue;
     }
 
@@ -102,7 +103,7 @@ async function syncCalendrier(db) {
     ).get(nomA, nomB);
 
     if (!match) {
-      console.warn(`[sync] Match introuvable en base : ${nomA} vs ${nomB}`);
+      logger.warn(`[sync] Match introuvable en base : ${nomA} vs ${nomB}`);
       continue;
     }
 
@@ -116,7 +117,7 @@ async function syncCalendrier(db) {
     mis_a_jour++;
   }
 
-  console.log(`[sync calendrier] ${mis_a_jour}/${matchsAPI.length} matchs mis à jour`);
+  logger.info(`[sync calendrier] ${mis_a_jour}/${matchsAPI.length} matchs mis à jour`);
   return mis_a_jour;
 }
 
@@ -147,10 +148,10 @@ async function syncResultats(db, { calculerPoints }) {
 
     calculerPoints(match.id);
     mis_a_jour++;
-    console.log(`[sync résultats] Match ${match.id} terminé : ${scoreA}-${scoreB}`);
+    logger.info(`[sync résultats] Match ${match.id} terminé : ${scoreA}-${scoreB}`);
   }
 
-  console.log(`[sync résultats] ${mis_a_jour} nouveau(x) résultat(s) enregistré(s)`);
+  logger.info(`[sync résultats] ${mis_a_jour} nouveau(x) résultat(s) enregistré(s)`);
   return mis_a_jour;
 }
 

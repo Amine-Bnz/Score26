@@ -51,7 +51,7 @@ export default function MatchsPasses({ userId, lang }) {
         </p>
       )}
       {matchs.map((match, i) => (
-        <div key={match.id} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>
+        <div key={match.id} className="card-stagger" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
           <MatchCardPasse match={match} lang={lang} />
         </div>
       ))}

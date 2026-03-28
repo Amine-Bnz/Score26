@@ -3,6 +3,7 @@
 // World Cup 2026 : league_id = 1, season = 2026
 // Doc : https://www.api-football.com/documentation-v3
 
+const logger = require('../logger');
 const BASE = 'https://v3.football.api-sports.io';
 const WC_LEAGUE_ID = 1;
 const WC_SEASON    = 2026;
@@ -95,7 +96,7 @@ async function syncLive(db) {
     mis_a_jour++;
   }
 
-  console.log(`[sync live] ${fixtures.length} match(s) en direct → ${mis_a_jour} mis à jour`);
+  logger.info(`[sync live] ${fixtures.length} match(s) en direct → ${mis_a_jour} mis à jour`);
   return mis_a_jour;
 }
 

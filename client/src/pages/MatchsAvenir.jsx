@@ -83,7 +83,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true }) {
             {t(lang, 'groupLabel')} {groupe}
           </p>
           {matchsGroupe.map((match, i) => (
-            <div key={match.id} className="card-stagger mb-3" style={{ animationDelay: `${i * 50}ms` }}>
+            <div key={match.id} className="card-stagger mb-3" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
               <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} />
             </div>
           ))}

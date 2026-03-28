@@ -3,14 +3,18 @@
 // Envoie une notif 1h avant chaque match pour les users sans prono
 
 const webPush = require('web-push')
+const logger  = require('../logger')
 
-// Initialise web-push avec les clés VAPID (appelé une fois au démarrage)
+// Initialise web-push avec les clés VAPID (une seule fois)
+let vapidInitialized = false
 function initWebPush() {
+  if (vapidInitialized) return true
   const pub  = process.env.VAPID_PUBLIC_KEY
   const priv = process.env.VAPID_PRIVATE_KEY
   const mail = process.env.VAPID_EMAIL || 'mailto:admin@score26.app'
   if (!pub || !priv || pub === 'your_vapid_public_key') return false
   webPush.setVapidDetails(mail, pub, priv)
+  vapidInitialized = true
   return true
 }
 
@@ -61,7 +65,7 @@ async function envoyerNotifAvantMatch(db) {
     }
     const payload = JSON.stringify({
       title: '⚽ Score26',
-      body:  `${row.equipe_a} vs ${row.equipe_b} — coup d\'envoi dans 1h !`,
+      body:  `${row.equipe_a} vs ${row.equipe_b} — Coup d'envoi dans 1h ! / Kickoff in 1h!`,
     })
 
     try {
@@ -72,12 +76,12 @@ async function envoyerNotifAvantMatch(db) {
       if (err.statusCode === 410 || err.statusCode === 404) {
         deleteSub.run(row.endpoint)
       } else {
-        console.error('[push notif] erreur envoi :', err.message)
+        logger.error({ err }, '[push notif] erreur envoi')
       }
     }
   }
 
-  console.log(`[push notif] ${lignes.length} notification(s) envoyée(s)`)
+  logger.info(`[push notif] ${lignes.length} notification(s) envoyée(s)`)
 }
 
 module.exports = { envoyerNotifAvantMatch }

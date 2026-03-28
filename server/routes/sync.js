@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const logger = require('../logger');
 const { syncCalendrier, syncResultats } = require('../services/footballData');
 const { calculerPoints } = require('../scoring');
 
@@ -20,7 +21,7 @@ router.post('/calendrier', adminOnly, async (req, res) => {
     const mis_a_jour = await syncCalendrier(db);
     return res.json({ ok: true, mis_a_jour });
   } catch (e) {
-    console.error('[sync calendrier]', e.message);
+    logger.error({ err: e }, '[sync calendrier] Erreur');
     return res.status(500).json({ error: e.message });
   }
 });
@@ -32,7 +33,7 @@ router.post('/resultats', adminOnly, async (req, res) => {
     const mis_a_jour = await syncResultats(db, { calculerPoints });
     return res.json({ ok: true, mis_a_jour });
   } catch (e) {
-    console.error('[sync résultats]', e.message);
+    logger.error({ err: e }, '[sync résultats] Erreur');
     return res.status(500).json({ error: e.message });
   }
 });

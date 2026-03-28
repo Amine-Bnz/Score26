@@ -112,12 +112,10 @@ const teamNamesEN = {
   'Écosse':     'Scotland',
   // CAF
   'Nigeria':    'Nigeria',
-  'Cameroun':   'Cameroon',
   'Égypte':     'Egypt',
   "Côte d'Ivoire": 'Ivory Coast',
   'Algérie':    'Algeria',
   'Mali':       'Mali',
-  'Tunisie':    'Tunisia',
   // AFC
   'Irak':       'Iraq',
   'Ouzbékistan':'Uzbekistan',
