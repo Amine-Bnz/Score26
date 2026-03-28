@@ -44,6 +44,29 @@ function formatDate(dateStr, lang) {
   return `${day} ${month} · ${time}`
 }
 
+// Countdown dynamique : "dans 2h30" si <24h, sinon date statique
+function DateOrCountdown({ dateStr, lang }) {
+  const [now, setNow] = useState(Date.now())
+  const target = new Date(dateStr).getTime()
+  const diff = target - now
+  const isClose = diff > 0 && diff < 24 * 60 * 60 * 1000
+
+  useEffect(() => {
+    if (!isClose) return
+    const id = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [isClose])
+
+  if (!isClose) {
+    return <>{formatDate(dateStr, lang)}</>
+  }
+
+  const h = Math.floor(diff / 3_600_000)
+  const m = Math.floor((diff % 3_600_000) / 60_000)
+  const countdown = h > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${m}min`
+  return <>{lang === 'fr' ? `dans ${countdown}` : `in ${countdown}`}</>
+}
+
 // Bloc équipe : drapeau + nom
 function TeamBlock({ fullName, lang }) {
   const { flag, name } = splitTeam(fullName, lang)
@@ -58,7 +81,7 @@ function TeamBlock({ fullName, lang }) {
 }
 
 // ── Card matchs à venir ──────────────────────────────────────────────────────
-export function MatchCardAvenir({ match, userId, lang, isOnline = true }) {
+export function MatchCardAvenir({ match, userId, lang, isOnline = true, highlight = false }) {
   const [scoreA, setScoreA] = useState(match.score_predit_a ?? '')
   const [scoreB, setScoreB] = useState(match.score_predit_b ?? '')
   const [saved,  setSaved]  = useState(false)
@@ -86,6 +109,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true }) {
       if (!isOnline) return
       upsertProno({ user_id: userId, match_id: match.id, score_predit_a: a, score_predit_b: b })
         .then(() => {
+          navigator.vibrate?.(10)
           setSaved(true)
           clearTimeout(savedTimerRef.current)
           savedTimerRef.current = setTimeout(() => setSaved(false), 700)
@@ -94,11 +118,17 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true }) {
   }
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 p-4">
-      {/* Date + verrou */}
+    <div className={`bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none p-4
+      ${highlight ? 'ring-2 ring-blue-500/50' : 'ring-1 ring-slate-100 dark:ring-slate-800/60'}`}>
+      {/* Date + verrou + badge prochain */}
       <div className="flex items-center justify-center gap-2 mb-4">
+        {highlight && (
+          <span className="text-[10px] font-bold bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">
+            {lang === 'fr' ? 'Prochain' : 'Next'}
+          </span>
+        )}
         <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tracking-wide">
-          {formatDate(match.date_coup_envoi, lang)}
+          <DateOrCountdown dateStr={match.date_coup_envoi} lang={lang} />
         </span>
         {isVerrouille && (
           <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded-full">

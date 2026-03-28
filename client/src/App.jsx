@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import Header from './components/Header'
 import Navbar from './components/Navbar'
@@ -20,6 +20,15 @@ function lsSet(key, value) {
 export default function App() {
   const [userId, setUserId] = useState(null)
   const [page,   setPage]   = useState('avenir') // 'avenir' | 'passes' | 'profil'
+  const [slideDir, setSlideDir] = useState('right')
+  const prevPageRef = useRef('avenir')
+
+  const PAGE_ORDER = { avenir: 0, passes: 1, profil: 2 }
+  function navigateTo(next) {
+    setSlideDir(PAGE_ORDER[next] >= PAGE_ORDER[prevPageRef.current] ? 'right' : 'left')
+    prevPageRef.current = next
+    setPage(next)
+  }
   const [theme,  setTheme]  = useState(() => lsGet('score26_theme', 'dark'))
   const [lang,   setLang]   = useState(() => lsGet('score26_lang', 'fr'))
   const isOnline = useOnlineStatus()
@@ -56,13 +65,13 @@ export default function App() {
         onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
       />
 
-      <main className="pb-20 px-4 pt-4">
-        {page === 'avenir' && <div className="page-enter"><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} /></div>}
-        {page === 'passes' && <div className="page-enter"><MatchsPasses userId={userId} lang={lang} /></div>}
-        {page === 'profil' && <div className="page-enter"><Profil       userId={userId} lang={lang} /></div>}
+      <main className="pb-20 px-4 pt-4 overflow-hidden">
+        {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} /></div>}
+        {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} /></div>}
+        {page === 'profil' && <div key="profil" className={`page-slide-${slideDir}`}><Profil       userId={userId} lang={lang} /></div>}
       </main>
 
-      <Navbar page={page} onNavigate={setPage} lang={lang} />
+      <Navbar page={page} onNavigate={navigateTo} lang={lang} />
     </div>
   )
 }

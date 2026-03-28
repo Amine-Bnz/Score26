@@ -70,25 +70,32 @@ export default function MatchsAvenir({ userId, lang, isOnline = true }) {
           {t(lang, 'noUpcoming')}
         </p>
       )}
-      {Object.entries(
-        aVenir.reduce((acc, m) => {
-          const g = m.groupe ?? '?'
-          if (!acc[g]) acc[g] = []
-          acc[g].push(m)
-          return acc
-        }, {})
-      ).sort(([a], [b]) => a.localeCompare(b)).map(([groupe, matchsGroupe]) => (
-        <div key={groupe}>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-3 mb-1 pl-1">
-            {t(lang, 'groupLabel')} {groupe}
-          </p>
-          {matchsGroupe.map((match, i) => (
-            <div key={match.id} className="card-stagger mb-3" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
-              <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} />
-            </div>
-          ))}
-        </div>
-      ))}
+      {(() => {
+        // Prochain match sans prono = le plus proche dans le temps sans score prédit
+        const nextId = aVenir
+          .filter(m => m.score_predit_a == null)
+          .sort((a, b) => new Date(a.date_coup_envoi) - new Date(b.date_coup_envoi))[0]?.id ?? null
+
+        return Object.entries(
+          aVenir.reduce((acc, m) => {
+            const g = m.groupe ?? '?'
+            if (!acc[g]) acc[g] = []
+            acc[g].push(m)
+            return acc
+          }, {})
+        ).sort(([a], [b]) => a.localeCompare(b)).map(([groupe, matchsGroupe]) => (
+          <div key={groupe}>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-3 mb-1 pl-1">
+              {t(lang, 'groupLabel')} {groupe}
+            </p>
+            {matchsGroupe.map((match, i) => (
+              <div key={match.id} className="card-stagger mb-3" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
+                <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} highlight={match.id === nextId} />
+              </div>
+            ))}
+          </div>
+        ))
+      })()}
     </div>
   )
 }

@@ -2,13 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Transitions de page ─────────────────────────────────────────────────── */
-@keyframes pageEnter {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0);   }
+/* ── Transitions de page (slide horizontal) ────────────────────────────── */
+@keyframes slideFromRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0);    }
 }
-.page-enter {
-  animation: pageEnter 0.22s ease-out both;
+@keyframes slideFromLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+.page-slide-right {
+  animation: slideFromRight 0.2s ease-out both;
+}
+.page-slide-left {
+  animation: slideFromLeft 0.2s ease-out both;
 }
 
 /* ── Apparition staggerée des cards ──────────────────────────────────────── */
