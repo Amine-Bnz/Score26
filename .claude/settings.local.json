@@ -11,7 +11,8 @@
       "Bash(npx vite:*)",
       "Bash(xargs ls:*)",
       "Bash(find /c/Users/redcr/Score26 -type f \\\\\\(-name .env -o -name credentials* -o -name secret* -o -name *.key -o -name *.pem \\\\\\))",
-      "Bash(find /c/Users/redcr/Score26/client/src -type f -name *.jsx -o -name *.js)"
+      "Bash(find /c/Users/redcr/Score26/client/src -type f -name *.jsx -o -name *.js)",
+      "Bash(npm run:*)"
     ]
   }
 }

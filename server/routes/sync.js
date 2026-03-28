@@ -8,7 +8,9 @@ const { calculerPoints } = require('../scoring');
 // Middleware : vérifie le token admin avant chaque route de sync
 function adminOnly(req, res, next) {
   const token = req.query.token || req.headers['x-admin-token'];
-  if (!token || token !== process.env.ADMIN_TOKEN) {
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected || expected === 'change_this_before_deploy' || token !== expected) {
+    logger.warn({ ip: req.ip, method: req.method, path: req.path }, '[sync] Accès refusé');
     return res.status(401).json({ error: 'Token admin invalide.' });
   }
   next();

@@ -9,28 +9,36 @@ import MatchsPasses from './pages/MatchsPasses'
 import Profil from './pages/Profil'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 
+// Lecture localStorage sécurisée (navigation privée Safari peut throw)
+function lsGet(key, fallback) {
+  try { return localStorage.getItem(key) ?? fallback } catch { return fallback }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, value) } catch { /* ignore */ }
+}
+
 export default function App() {
   const [userId, setUserId] = useState(null)
   const [page,   setPage]   = useState('avenir') // 'avenir' | 'passes' | 'profil'
-  const [theme,  setTheme]  = useState(() => localStorage.getItem('score26_theme') || 'dark')
-  const [lang,   setLang]   = useState(() => localStorage.getItem('score26_lang')  || 'fr')
+  const [theme,  setTheme]  = useState(() => lsGet('score26_theme', 'dark'))
+  const [lang,   setLang]   = useState(() => lsGet('score26_lang', 'fr'))
   const isOnline = useOnlineStatus()
 
   // Récupération de l'identité persistée en localStorage
   useEffect(() => {
-    const id = localStorage.getItem('score26_user_id')
+    const id = lsGet('score26_user_id', null)
     if (id) setUserId(id)
   }, [])
 
   // Persistance et application du thème
   useEffect(() => {
-    localStorage.setItem('score26_theme', theme)
+    lsSet('score26_theme', theme)
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 
   // Persistance de la langue
   useEffect(() => {
-    localStorage.setItem('score26_lang', lang)
+    lsSet('score26_lang', lang)
   }, [lang])
 
   // Onboarding si pas encore de compte

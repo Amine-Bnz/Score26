@@ -20,6 +20,7 @@ async function fetchAF(endpoint) {
   }
   const res = await fetch(`${BASE}${endpoint}`, {
     headers: { 'x-apisports-key': key },
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`API-Football erreur ${res.status} sur ${endpoint}`);
   return res.json();

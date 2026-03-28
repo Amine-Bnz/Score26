@@ -72,6 +72,7 @@ async function fetchFD(endpoint) {
 
   const res = await fetch(`${BASE}${endpoint}`, {
     headers: { 'X-Auth-Token': key },
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!res.ok) {

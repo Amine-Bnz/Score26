@@ -65,6 +65,14 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true }) {
   const debounceRef = useRef(null)
   const savedTimerRef = useRef(null)
 
+  // Nettoyage des timers au démontage (évite setState sur composant démonté)
+  useEffect(() => {
+    return () => {
+      clearTimeout(debounceRef.current)
+      clearTimeout(savedTimerRef.current)
+    }
+  }, [])
+
   const isVerrouille = match.verrouille === 1 || new Date() >= new Date(match.date_coup_envoi)
 
   function handleChange(val, setter, autre, isA) {

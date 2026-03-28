@@ -35,16 +35,33 @@ router.patch('/matchs/:id', checkToken, (req, res) => {
   const match = db.prepare('SELECT * FROM matchs WHERE id = ?').get(req.params.id);
   if (!match) return res.status(404).json({ error: 'Match introuvable.' });
 
+  // Validation scores si fournis
+  if (score_reel_a != null || score_reel_b != null) {
+    const a = parseInt(score_reel_a, 10);
+    const b = parseInt(score_reel_b, 10);
+    if (isNaN(a) || isNaN(b) || a < 0 || b < 0 || a > 99 || b > 99) {
+      return res.status(400).json({ error: 'Scores invalides (entiers 0-99).' });
+    }
+    req.body.score_reel_a = a;
+    req.body.score_reel_b = b;
+  }
+
+  // Validation statut si fourni
+  const STATUTS_VALIDES = ['a_venir', 'en_cours', 'termine'];
+  if (statut && !STATUTS_VALIDES.includes(statut)) {
+    return res.status(400).json({ error: `Statut invalide (${STATUTS_VALIDES.join(', ')}).` });
+  }
+
   // Mise à jour du statut seul (ex: passer en 'en_cours')
-  if (statut && score_reel_a == null) {
+  if (statut && req.body.score_reel_a == null) {
     db.prepare('UPDATE matchs SET statut = ? WHERE id = ?').run(statut, req.params.id);
   }
 
   // Saisie du score réel → statut forcé à 'termine' + calcul des points
-  if (score_reel_a != null && score_reel_b != null) {
+  if (req.body.score_reel_a != null && req.body.score_reel_b != null) {
     db.prepare(`
       UPDATE matchs SET score_reel_a = ?, score_reel_b = ?, statut = 'termine' WHERE id = ?
-    `).run(score_reel_a, score_reel_b, req.params.id);
+    `).run(req.body.score_reel_a, req.body.score_reel_b, req.params.id);
     calculerPoints(req.params.id);
   }
 
