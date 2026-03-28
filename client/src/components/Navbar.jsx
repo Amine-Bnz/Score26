@@ -16,7 +16,7 @@ export default function Navbar({ page, onNavigate, lang }) {
           <button
             key={key}
             onClick={() => onNavigate(key)}
-            className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors active:scale-90 transition-transform relative"
+            className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors active:scale-90 transition-transform relative focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset"
             aria-label={label}
           >
             {active && (

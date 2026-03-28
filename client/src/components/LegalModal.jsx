@@ -2,17 +2,42 @@
 // Accessible depuis le bas de la page Profil
 // Obligatoire pour le Play Store et le RGPD
 
+import { useEffect, useRef } from 'react'
+
 const CONTACT_EMAIL = 'contact@score26.fr' // TODO : remplacer par la vraie adresse
 
 export default function LegalModal({ lang, onClose }) {
   const isFr = lang === 'fr'
+  const dialogRef = useRef(null)
+
+  // Focus trap + Escape
+  useEffect(() => {
+    const el = dialogRef.current
+    if (!el) return
+    const focusable = el.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    if (focusable.length) focusable[0].focus()
+
+    function handleKey(e) {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'Tab' || !focusable.length) return
+      const first = focusable[0], last = focusable[focusable.length - 1]
+      if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus() } }
+      else            { if (document.activeElement === last)  { e.preventDefault(); first.focus() } }
+    }
+    el.addEventListener('keydown', handleKey)
+    return () => el.removeEventListener('keydown', handleKey)
+  }, [onClose])
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4 py-16 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={isFr ? 'Politique de confidentialité' : 'Privacy Policy'}
     >
       <div
+        ref={dialogRef}
         className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-xl flex flex-col max-h-full overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
@@ -23,7 +48,7 @@ export default function LegalModal({ lang, onClose }) {
           </h2>
           <button
             onClick={onClose}
-            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg w-8 h-8 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold text-sm flex-shrink-0"
+            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg w-8 h-8 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold text-sm flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="Fermer"
           >
             ✕

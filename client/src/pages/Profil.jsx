@@ -168,7 +168,7 @@ export default function Profil({ userId, lang }) {
       <button
         onClick={handleShare}
         disabled={sharing}
-        className="w-full py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 active:scale-95 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20"
+        className="w-full py-3.5 rounded-2xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 active:scale-95 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100 dark:focus-visible:ring-offset-slate-950"
       >
         {sharing ? '...' : t(lang, 'share')}
       </button>
@@ -182,7 +182,7 @@ export default function Profil({ userId, lang }) {
       {/* Lien politique de confidentialité */}
       <button
         onClick={() => setShowLegal(true)}
-        className="text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-colors pb-2"
+        className="text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-colors pb-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
       >
         {lang === 'fr' ? 'Politique de confidentialité' : 'Privacy Policy'}
       </button>
@@ -218,7 +218,7 @@ function NotifButton({ status, lang, onEnable, onDisable }) {
     return (
       <button
         onClick={onDisable}
-        className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 active:scale-95 text-slate-600 dark:text-slate-300 font-semibold text-sm transition-all flex items-center justify-center gap-2"
+        className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 active:scale-95 text-slate-600 dark:text-slate-300 font-semibold text-sm transition-all flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
         <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
         {t(lang, 'disableNotifs')}
@@ -230,7 +230,7 @@ function NotifButton({ status, lang, onEnable, onDisable }) {
     <button
       onClick={onEnable}
       disabled={status === 'subscribing'}
-      className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 active:scale-95 text-slate-600 dark:text-slate-300 font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 active:scale-95 text-slate-600 dark:text-slate-300 font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
     >
       {status === 'subscribing' ? '...' : t(lang, 'enableNotifs')}
     </button>

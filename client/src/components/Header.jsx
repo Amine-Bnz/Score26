@@ -1,14 +1,41 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { SunIcon, MoonIcon } from './Icons'
+
+// Focus trap : piège le Tab dans la modale et ferme sur Escape
+function useFocusTrap(ref, onClose) {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const focusable = el.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    if (focusable.length) focusable[0].focus()
+
+    function handleKey(e) {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'Tab' || !focusable.length) return
+      const first = focusable[0], last = focusable[focusable.length - 1]
+      if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus() } }
+      else            { if (document.activeElement === last)  { e.preventDefault(); first.focus() } }
+    }
+    el.addEventListener('keydown', handleKey)
+    return () => el.removeEventListener('keydown', handleKey)
+  }, [ref, onClose])
+}
 
 function AboutModal({ lang, onClose }) {
   const isFr = lang === 'fr'
+  const dialogRef = useRef(null)
+  useFocusTrap(dialogRef, onClose)
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-5 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={isFr ? 'À propos' : 'About'}
     >
       <div
+        ref={dialogRef}
         className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}
       >
@@ -19,7 +46,7 @@ function AboutModal({ lang, onClose }) {
           </span>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition text-lg leading-none"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition text-lg leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
             aria-label="Fermer"
           >
             ✕
@@ -74,7 +101,7 @@ export default function Header({ lang, onLangToggle, theme, onThemeToggle }) {
         {/* Toggle langue */}
         <button
           onClick={onLangToggle}
-          className="text-xs font-bold tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors bg-slate-200 dark:bg-slate-800 px-2.5 py-1 rounded-md"
+          className="text-xs font-bold tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors bg-slate-200 dark:bg-slate-800 px-2.5 py-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           aria-label="Changer la langue"
         >
           {lang === 'fr' ? 'EN' : 'FR'}
@@ -89,14 +116,14 @@ export default function Header({ lang, onLangToggle, theme, onThemeToggle }) {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setShowAbout(true)}
-            className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors bg-slate-200 dark:bg-slate-800 w-8 h-8 rounded-md flex items-center justify-center text-sm"
+            className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors bg-slate-200 dark:bg-slate-800 w-8 h-8 rounded-md flex items-center justify-center text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="À propos"
           >
             ℹ️
           </button>
           <button
             onClick={onThemeToggle}
-            className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors bg-slate-200 dark:bg-slate-800 w-8 h-8 rounded-md flex items-center justify-center"
+            className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors bg-slate-200 dark:bg-slate-800 w-8 h-8 rounded-md flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="Changer le thème"
           >
             {theme === 'dark' ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}

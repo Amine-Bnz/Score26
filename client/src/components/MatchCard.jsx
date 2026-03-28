@@ -12,10 +12,10 @@ function getResultat(match) {
 }
 
 const resultStyles = {
-  exact:       { bar: 'bg-green-500', badge: 'bg-green-500/10 text-green-500 border-green-500/20' },
-  bonne_issue: { bar: 'bg-blue-500',  badge: 'bg-blue-500/10  text-blue-500  border-blue-500/20'  },
-  rate:        { bar: 'bg-red-500',   badge: 'bg-red-500/10   text-red-500   border-red-500/20'   },
-  neutre:      { bar: 'bg-slate-600', badge: 'bg-slate-500/10 text-slate-400 border-slate-600/20' },
+  exact:       { bar: 'bg-green-500', badge: 'bg-green-500/10 text-green-500 border-green-500/20', icon: '🎯' },
+  bonne_issue: { bar: 'bg-blue-500',  badge: 'bg-blue-500/10  text-blue-500  border-blue-500/20',  icon: '✅' },
+  rate:        { bar: 'bg-red-500',   badge: 'bg-red-500/10   text-red-500   border-red-500/20',   icon: '❌' },
+  neutre:      { bar: 'bg-slate-600', badge: 'bg-slate-500/10 text-slate-400 border-slate-600/20', icon: '—'  },
 }
 
 // Compteur animé 0 → valeur cible (pour les points obtenus)
@@ -118,7 +118,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true }) {
             value={scoreA}
             disabled={isVerrouille}
             onChange={e => handleChange(e.target.value, setScoreA, scoreB, true)}
-            className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
+            className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
               ${saved ? 'border-solid border-green-400' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
           />
           <span className="text-slate-300 dark:text-slate-600 font-bold text-lg select-none">—</span>
@@ -127,7 +127,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true }) {
             value={scoreB}
             disabled={isVerrouille}
             onChange={e => handleChange(e.target.value, setScoreB, scoreA, false)}
-            className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
+            className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
               ${saved ? 'border-solid border-green-400' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
           />
         </div>
@@ -243,10 +243,10 @@ export function MatchCardPasse({ match, lang }) {
               <span className="text-xs text-slate-400 dark:text-slate-600">{t(lang, 'noProno')}</span>
             )}
 
-            {/* Badge points */}
+            {/* Badge points — icône + texte pour accessibilité (pas couleur-only) */}
             {match.points_obtenus != null && (
               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${style.badge}`}>
-                +<AnimatedCount value={match.points_obtenus} /> pts
+                {style.icon} +<AnimatedCount value={match.points_obtenus} /> pts
               </span>
             )}
           </div>
