@@ -642,3 +642,123 @@ Le texte de la notif push est toujours en français. Les users anglophones ne co
 | 5 | Cohérence & polish | 11–15 | Basse |
 
 **Suivant :** Lot 1 — Étape 1 : Protéger `PATCH /api/matchs/:id`
+
+---
+
+## 2026-03-28 — Scope v3.1 : Audit pré-Play Store & améliorations
+
+Résultat d'un second audit complet (tous les fichiers server + client + config + PWA). Corrections, accessibilité, nouvelles features UX, optimisations techniques et ops.
+
+---
+
+### Lot 1 — Sécurité & robustesse (critique)
+
+**Étape 1 : Guard token par défaut dans sync.js**
+`server/routes/sync.js` — le middleware `adminOnly` ne vérifie pas si `ADMIN_TOKEN` vaut le placeholder `change_this_before_deploy`. Contrairement à `admin.js` qui bloque ce cas, `sync.js` accepte n'importe quel token si la variable env n'est pas changée.
+→ Ajouter la même vérification que dans `admin.js` : refuser si `!expected || expected === 'change_this_before_deploy'`.
+
+**Étape 2 : Timeout sur les fetch() vers APIs externes**
+`server/services/footballData.js` et `apiFootball.js` — les appels `fetch()` n'ont aucun timeout. Si l'API externe ne répond pas, le thread reste bloqué indéfiniment.
+→ Ajouter `AbortSignal.timeout(30_000)` sur chaque fetch.
+
+**Étape 3 : Validation scores dans admin PATCH**
+`server/routes/admin.js` — `score_reel_a` et `score_reel_b` ne sont pas validés. Accepte négatifs, flottants, valeurs >99.
+→ Ajouter la même validation que dans `pronos.js` : entiers 0-99.
+
+**Étape 4 : Fix memory leak MatchCard**
+`client/src/components/MatchCard.jsx` — les timers `debounceRef` et `savedTimerRef` ne sont pas nettoyés au unmount. Si l'user change d'onglet pendant le debounce, `setState` tourne sur un composant démonté.
+→ Ajouter un `useEffect` cleanup qui `clearTimeout` les deux refs.
+
+**Étape 5 : Try-catch localStorage**
+`client/src/App.jsx` — `localStorage.getItem()` est appelé directement dans les initialiseurs de `useState`. En navigation privée (Safari), ça peut throw.
+→ Wrapper dans un try-catch avec fallback sur les valeurs par défaut.
+
+---
+
+### Lot 2 — Accessibilité (haute priorité)
+
+**Étape 6 : Focus styles sur inputs et boutons**
+Plusieurs composants utilisent `focus:outline-none` sans alternative. Les utilisateurs clavier ne voient pas quel élément est sélectionné.
+→ Remplacer par `focus:outline-none focus:ring-2 focus:ring-blue-500` sur les inputs score, boutons du header, navbar, et modales.
+
+**Étape 7 : Focus trap + aria sur les modales**
+`AboutModal` (Header.jsx) et `LegalModal.jsx` — pas de `role="dialog"`, pas de `aria-modal="true"`, pas de focus trap. Le tab peut sortir de la modale ouverte.
+→ Ajouter les attributs ARIA + focus trap au clavier (écouter Tab et piéger dans la modale).
+
+**Étape 8 : Indicateurs non-couleur pour les résultats**
+`MatchCardPasse` utilise uniquement la couleur de bordure (vert/bleu/rouge) pour indiquer le résultat. Les daltoniens ne distinguent pas.
+→ Ajouter une icône ou un label texte dans le badge points : ✓ exact, ≈ bonne issue, ✗ raté.
+
+---
+
+### Lot 3 — Nouvelles features UX (moyenne priorité)
+
+**Étape 9 : Prono du jour mis en avant**
+Dans la liste "À venir", mettre en évidence le prochain match sans prono de l'user (le plus proche dans le temps). Badge "Prochain !" / "Next!" sur la card + léger surlignage.
+→ Filtrer côté client le premier match `a_venir` sans `score_predit_a` et ajouter une prop `highlight` à la card.
+
+**Étape 10 : Countdown dynamique sur les cards à venir**
+Quand un match est à moins de 24h, remplacer la date statique ("15 JUN · 21:00") par un compte à rebours ("dans 2h30" / "in 2h30"). Crée de l'urgence naturelle.
+→ Timer `setInterval(60_000)` dans `MatchCardAvenir` + logique conditionnelle < 24h.
+
+**Étape 11 : Transition fluide entre onglets**
+Actuellement fade simple entre les pages. Passer à un slide horizontal (gauche/droite selon la direction de navigation) pour un feeling plus natif.
+→ CSS transform + transition sur le conteneur, direction passée via l'état `page` dans `App.jsx`.
+
+**Étape 12 : Haptic feedback**
+Ajouter `navigator.vibrate(10)` sur les taps importants : boutons navbar, validation score, toggle langue/thème. Feedback physique satisfaisant sur mobile, ignoré silencieusement sur desktop.
+→ Helper `vibrate()` avec guard `navigator.vibrate?.()`.
+
+---
+
+### Lot 4 — Performance technique (moyenne priorité)
+
+**Étape 13 : Optimistic UI pour les pronos**
+Actuellement le score est envoyé au serveur puis on attend la réponse. L'user ne voit rien pendant 200-600ms.
+→ Afficher immédiatement la valeur saisie dans l'UI, envoyer en background, rollback si erreur. L'app semble instantanée.
+
+**Étape 14 : Cache DiceBear dans le Service Worker**
+Les avatars DiceBear sont re-téléchargés à chaque rendu du profil ou de la card de partage. Si l'API DiceBear est down, pas d'avatar.
+→ Ajouter une règle Workbox `CacheFirst` pour `api.dicebear.com` avec TTL 30 jours.
+
+**Étape 15 : Backoff exponentiel sur APIs externes**
+Si football-data.org ou API-Football retourne une erreur, le polling continue au même rythme (3-10 min). Peut se faire rate-limit.
+→ Compteur d'échecs consécutifs, backoff ×2 à chaque erreur (max 30 min), reset au premier succès.
+
+**Étape 16 : Optimiser requête push notifications**
+`pushNotifications.js` — le `CROSS JOIN` entre `matchs` et `push_subscriptions` crée un produit cartésien N×M. Avec 72 matchs et 1000 users ça fait 72000 lignes scannées.
+→ Filtrer d'abord les matchs dans la fenêtre horaire (sous-requête), puis joindre les subscriptions. Résultat identique, scan réduit.
+
+---
+
+### Lot 5 — Ops & finitions (basse priorité)
+
+**Étape 17 : Logging admin actions**
+`server/routes/admin.js` — les actions admin (modification score, recalcul, reset) ne sont pas loggées. Pas de trace d'audit.
+→ Ajouter `logger.info()` après chaque opération PATCH avec l'action, le match_id et l'IP.
+
+**Étape 18 : Auto-backup SQLite**
+Aucun backup automatique de la base de données. Si le volume Fly.io est corrompu, tout est perdu.
+→ Script `server/backup.js` qui fait un `.backup()` SQLite vers un fichier horodaté. Déclenché via `fly ssh console -C "node backup.js"` ou cron Fly.io.
+
+**Étape 19 : CORS fail-safe en prod**
+`server/index.js` — si `CORS_ORIGIN` n'est pas configuré, CORS est ouvert à `*`. Pas de garde en production.
+→ Si `NODE_ENV=production` et `CORS_ORIGIN` absent/vide, logger un warning et refuser les requêtes cross-origin.
+
+**Étape 20 : Mettre à jour l'email de contact**
+`client/src/components/LegalModal.jsx` ligne 5 — placeholder `contact@score26.fr` toujours en place.
+→ Remplacer par l'adresse réelle une fois le domaine acheté.
+
+---
+
+### Résumé par priorité
+
+| Lot | Nom | Étapes | Priorité |
+|-----|-----|--------|----------|
+| 1 | Sécurité & robustesse | 1–5 | Critique — avant le Play Store |
+| 2 | Accessibilité | 6–8 | Haute — exigence Play Store |
+| 3 | Nouvelles features UX | 9–12 | Moyenne — différenciation |
+| 4 | Performance technique | 13–16 | Moyenne — qualité perçue |
+| 5 | Ops & finitions | 17–20 | Basse — confort ops |
+
+**Suivant :** Lot 1 — Étape 1 : Guard token sync.js
