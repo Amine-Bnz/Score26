@@ -14,7 +14,13 @@
       "Bash(find /c/Users/redcr/Score26/client/src -type f -name *.jsx -o -name *.js)",
       "Bash(npm run:*)",
       "Bash(echo \"exit:$?\")",
-      "Bash(node --test tests/admin.test.js tests/sync.test.js)"
+      "Bash(node --test tests/admin.test.js tests/sync.test.js)",
+      "Bash(find /c/Users/redcr/Score26 -name *service*worker* -o -name *sw.js)",
+      "Bash(find /c/Users/redcr/Score26 -type f \\\\\\(-name Dockerfile* -o -name .dockerignore -o -name bubblewrap* \\\\\\))",
+      "Bash(find /c/Users/redcr/Score26 -name README* -o -name CLAUDE*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -r \"privacy\\\\|terms\\\\|legal\" /c/Users/redcr/Score26/client/src --include=*.jsx --include=*.js)",
+      "Bash(file /c/Users/redcr/Score26/client/public/icon-*.png /c/Users/redcr/Score26/client/public/maskable-*.png /c/Users/redcr/Score26/client/public/apple-touch-icon.png)"
     ]
   }
 }

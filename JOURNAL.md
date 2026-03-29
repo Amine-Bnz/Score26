@@ -954,3 +954,18 @@ Aucune visibilité sur l'activité de l'app : combien d'users, combien de pronos
 **Décisions :** Compteurs simples via `COUNT(*)` SQLite. Pas de colonne `created_at` sur pronos → on log le total plutôt que "pronos des 24h". 5 requêtes légères, exécutées une fois par heure → impact négligeable.
 
 **v3.2 terminée.** 48 tests backend, 0 fail. Build frontend OK.
+
+---
+
+## 2026-03-29 — Préparation Play Store
+
+### Page Politique de confidentialité (URL directe)
+**Fait :** Page HTML statique bilingue FR/EN créée dans `client/public/privacy.html`. Accessible directement à `score26.vercel.app/privacy.html` sans passer par React. Contenu identique à la modale `LegalModal.jsx`. Les deux versions (FR + EN) sont sur la même page avec liens d'ancrage pour naviguer entre elles.
+**Fichiers :** `client/public/privacy.html` (créé)
+**Décisions :**
+- Fichier HTML statique plutôt que route React : pas d'interférence avec le SPA, chargement instantané, pas de dépendance JS
+- Style dark sobre inline (pas de Tailwind) : la page doit fonctionner indépendamment du build React
+- Pas de lien vers cette page dans l'app (demande user) : accessible uniquement via URL directe, destinée au champ "Privacy Policy URL" du Play Store
+- La modale in-app `LegalModal.jsx` reste en place pour les users qui y accèdent depuis le profil
+
+**Suivant :** assetlinks.json, config Bubblewrap/TWA, feature graphic Play Store
