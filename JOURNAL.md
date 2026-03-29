@@ -968,4 +968,42 @@ Aucune visibilité sur l'activité de l'app : combien d'users, combien de pronos
 - Pas de lien vers cette page dans l'app (demande user) : accessible uniquement via URL directe, destinée au champ "Privacy Policy URL" du Play Store
 - La modale in-app `LegalModal.jsx` reste en place pour les users qui y accèdent depuis le profil
 
-**Suivant :** assetlinks.json, config Bubblewrap/TWA, feature graphic Play Store
+### Asset links Android (TWA)
+**Fait :** Fichier `client/public/.well-known/assetlinks.json` créé avec placeholder SHA256 (à remplir après génération du keystore via PWABuilder). Fichier `client/vercel.json` créé pour forcer le routage correct : assetlinks.json servi avec `Content-Type: application/json`, toutes les autres routes non-statiques redirigées vers `index.html` (SPA fallback).
+**Fichiers :** `.well-known/assetlinks.json` (créé), `vercel.json` (créé)
+
+**Suivant :** Générer le package Android via PWABuilder, mettre à jour le SHA256
+
+---
+
+## 2026-03-29 — Améliorations QoL/UX (8 étapes)
+
+Audit UX complet orienté usage quotidien pendant la Coupe du Monde (3-4 matchs/jour). Corrections des frictions identifiées.
+
+### Étape 1+6 : Clavier numérique mobile + auto-select
+**Fait :** Remplacement de `type="number"` par `type="text" inputMode="numeric" pattern="[0-9]*"` sur les inputs score. Affiche un pavé numérique propre (0-9) sur iOS et Android au lieu du clavier complet avec virgule/moins. Filtrage regex côté JS pour bloquer les caractères non-numériques. Ajout de `onFocus → select()` sur les deux inputs pour sélectionner le contenu au tap.
+**Fichiers :** `MatchCard.jsx`
+
+### Étape 2+5 : Compteur de pronos + filtre
+**Fait :** Badge en haut de "À venir" affichant "pronostics posés 3/12" (format neutre, pas incitatif). Au tap sur le badge, bascule en mode filtre : n'affiche que les matchs sans prono. Le badge devient bleu quand le filtre est actif. Message "Tous les pronos sont posés !" si rien à afficher.
+**Fichiers :** `MatchsAvenir.jsx`, `i18n.js`
+
+### Étape 3 : Alerte "Dernier moment" avant verrouillage
+**Fait :** Quand un match est à moins de 30 minutes du coup d'envoi et que l'user n'a pas encore pronostiqué, la card pulse en ambre avec un badge "Dernier moment !" / "Last chance!". Prend la priorité sur le badge "Prochain".
+**Fichiers :** `MatchsAvenir.jsx`, `MatchCard.jsx`, `i18n.js`
+
+### Étape 4 : Mémoire de scroll entre onglets
+**Fait :** La position de scroll est sauvegardée dans un `useRef` quand l'user change d'onglet, et restaurée via `requestAnimationFrame` quand il revient. Plus besoin de re-scroller jusqu'au Groupe F.
+**Fichiers :** `App.jsx`
+
+### Étape 7 : Séparateurs par date dans les matchs passés
+**Fait :** Les matchs passés sont regroupés par date avec des séparateurs ("lundi 15 juin", "mardi 16 juin"). Même style que les séparateurs de groupe dans "À venir". La date est localisée FR/EN.
+**Fichiers :** `MatchsPasses.jsx`
+
+### Étape 8 : Hint "Tap !" sur les cards score exact
+**Fait :** Petit texte vert "Tap !" animé (bounce) sous le badge points des cards avec score exact. S'affiche uniquement tant que l'user n'a jamais tapé sur une card exacte (flag `score26_confetti_seen` en localStorage). Disparaît définitivement après le premier confetti.
+**Fichiers :** `MatchCard.jsx`
+
+**Résultat :** Build frontend OK.
+
+**Suivant :** Tests sur appareil réel, autres améliorations UX si nécessaire

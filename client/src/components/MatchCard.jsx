@@ -82,7 +82,7 @@ function TeamBlock({ fullName, lang }) {
 }
 
 // ── Card matchs à venir ──────────────────────────────────────────────────────
-export function MatchCardAvenir({ match, userId, lang, isOnline = true, highlight = false }) {
+export function MatchCardAvenir({ match, userId, lang, isOnline = true, highlight = false, lastChance = false, onPronoSaved }) {
   const [scoreA, setScoreA] = useState(match.score_predit_a ?? '')
   const [scoreB, setScoreB] = useState(match.score_predit_b ?? '')
   const [saved,  setSaved]  = useState(false)  // false | 'saving' | 'ok' | 'error'
@@ -102,7 +102,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
   const isVerrouille = match.verrouille === 1 || new Date() >= new Date(match.date_coup_envoi)
 
   function handleChange(val, setter, autre, isA) {
-    const parsed = val === '' ? '' : Math.max(0, parseInt(val) || 0)
+    const parsed = val === '' ? '' : Math.max(0, Math.min(99, parseInt(val) || 0))
     setter(parsed)
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
@@ -117,6 +117,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
           if (res.error) throw new Error(res.error)
           navigator.vibrate?.(10)
           prevScoreRef.current = { a, b }
+          onPronoSaved?.(match.id, a, b)
           setSaved('ok')
           clearTimeout(savedTimerRef.current)
           savedTimerRef.current = setTimeout(() => setSaved(false), 700)
@@ -134,10 +135,15 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
 
   return (
     <div className={`bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none p-4
-      ${highlight ? 'ring-2 ring-blue-500/50' : 'ring-1 ring-slate-100 dark:ring-slate-800/60'}`}>
-      {/* Date + verrou + badge prochain */}
+      ${lastChance ? 'ring-2 ring-amber-500/60 animate-pulse' : highlight ? 'ring-2 ring-blue-500/50' : 'ring-1 ring-slate-100 dark:ring-slate-800/60'}`}>
+      {/* Date + verrou + badges */}
       <div className="flex items-center justify-center gap-2 mb-4">
-        {highlight && (
+        {lastChance && (
+          <span className="text-[10px] font-bold bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full">
+            {t(lang, 'lastChance')}
+          </span>
+        )}
+        {highlight && !lastChance && (
           <span className="text-[10px] font-bold bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">
             {lang === 'fr' ? 'Prochain' : 'Next'}
           </span>
@@ -159,13 +165,15 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
         {/* Inputs score */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <input
-            type="number" min="0" max="99"
+            type="text" inputMode="numeric" pattern="[0-9]*"
             value={scoreA}
             disabled={isVerrouille}
+            onFocus={e => e.target.select()}
             onChange={e => {
-              handleChange(e.target.value, setScoreA, scoreB, true)
+              const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
+              handleChange(v, setScoreA, scoreB, true)
               // Auto-focus vers input B quand on tape un chiffre
-              if (e.target.value !== '' && !isNaN(e.target.value)) {
+              if (v !== '') {
                 setTimeout(() => { inputBRef.current?.focus(); inputBRef.current?.select() }, 0)
               }
             }}
@@ -175,13 +183,15 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
           <span className="text-slate-300 dark:text-slate-600 font-bold text-lg select-none">—</span>
           <input
             ref={inputBRef}
-            type="number" min="0" max="99"
+            type="text" inputMode="numeric" pattern="[0-9]*"
             value={scoreB}
             disabled={isVerrouille}
+            onFocus={e => e.target.select()}
             onChange={e => {
-              handleChange(e.target.value, setScoreB, scoreA, false)
+              const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
+              handleChange(v, setScoreB, scoreA, false)
               // Fermer le clavier après saisie du score B
-              if (e.target.value !== '' && !isNaN(e.target.value)) {
+              if (v !== '') {
                 setTimeout(() => e.target.blur(), 0)
               }
             }}
@@ -263,11 +273,20 @@ export function MatchCardPasse({ match, lang }) {
   const resultat = getResultat(match)
   const style = resultStyles[resultat]
   const firedRef = useRef(false)
+  const [hintVisible, setHintVisible] = useState(() => {
+    if (resultat !== 'exact') return false
+    try { return !localStorage.getItem('score26_confetti_seen') } catch { return false }
+  })
 
   // Confetti au tap sur une card "score exact" (une seule fois par session)
   function handleClick(e) {
     if (resultat !== 'exact' || firedRef.current) return
     firedRef.current = true
+    // Masquer le hint après le premier tap
+    if (hintVisible) {
+      setHintVisible(false)
+      try { localStorage.setItem('score26_confetti_seen', '1') } catch {}
+    }
     const rect = e.currentTarget.getBoundingClientRect()
     const x = (e.clientX || rect.left + rect.width / 2) / window.innerWidth
     const y = (e.clientY || rect.top + rect.height / 2) / window.innerHeight
@@ -320,6 +339,12 @@ export function MatchCardPasse({ match, lang }) {
             {match.points_obtenus != null && (
               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${style.badge}`}>
                 {style.icon} +<AnimatedCount value={match.points_obtenus} /> pts
+              </span>
+            )}
+            {/* Hint "Tap !" la première fois sur un score exact */}
+            {hintVisible && (
+              <span className="text-[10px] text-green-500 animate-bounce">
+                Tap !
               </span>
             )}
           </div>

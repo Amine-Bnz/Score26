@@ -30,6 +30,8 @@ const translations = {
     notifsBlockedHint: 'Pour les réactiver : clique sur le cadenas 🔒 dans la barre d\'adresse de ton navigateur, puis autorise les notifications pour ce site.',
     notifsUnsupported: 'Notifications non disponibles',
     tooManyAttempts: 'Trop de tentatives, réessaie dans quelques minutes.',
+    pronosPlaced: 'pronostics posés',
+    lastChance: 'Dernier moment !',
   },
   en: {
     welcome: 'Welcome to score26',
@@ -62,6 +64,8 @@ const translations = {
     notifsBlockedHint: 'To re-enable them: click the lock icon 🔒 in your browser\'s address bar, then allow notifications for this site.',
     notifsUnsupported: 'Notifications unavailable',
     tooManyAttempts: 'Too many attempts, please try again in a few minutes.',
+    pronosPlaced: 'predictions placed',
+    lastChance: 'Last chance!',
   },
 }
 

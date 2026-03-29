@@ -25,10 +25,16 @@ export default function App() {
   const prevPageRef = useRef('avenir')
 
   const PAGE_ORDER = { avenir: 0, passes: 1, profil: 2 }
+  const scrollPositions = useRef({ avenir: 0, passes: 0, profil: 0 })
+
   function navigateTo(next) {
+    // Sauvegarder la position de scroll de la page actuelle
+    scrollPositions.current[prevPageRef.current] = window.scrollY
     setSlideDir(PAGE_ORDER[next] >= PAGE_ORDER[prevPageRef.current] ? 'right' : 'left')
     prevPageRef.current = next
     setPage(next)
+    // Restaurer la position de scroll de la page cible
+    requestAnimationFrame(() => window.scrollTo(0, scrollPositions.current[next]))
   }
   const [theme,  setTheme]  = useState(() => lsGet('score26_theme', 'dark'))
   const [lang,   setLang]   = useState(() => lsGet('score26_lang', 'fr'))

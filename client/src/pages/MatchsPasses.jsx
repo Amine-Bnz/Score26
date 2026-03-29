@@ -53,11 +53,31 @@ export default function MatchsPasses({ userId, lang, initialData = null }) {
           {t(lang, 'noPast')}
         </p>
       )}
-      {matchs.map((match, i) => (
-        <div key={match.id} className="card-stagger" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
-          <MatchCardPasse match={match} lang={lang} />
-        </div>
-      ))}
+      {(() => {
+        let lastDate = null
+        let cardIdx = 0
+        return matchs.map(match => {
+          const matchDate = new Date(match.date_coup_envoi).toLocaleDateString(
+            lang === 'fr' ? 'fr-FR' : 'en-US',
+            { weekday: 'long', day: 'numeric', month: 'long' }
+          )
+          const showSep = matchDate !== lastDate
+          lastDate = matchDate
+          const i = cardIdx++
+          return (
+            <div key={match.id}>
+              {showSep && (
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-3 mb-1 pl-1">
+                  {matchDate}
+                </p>
+              )}
+              <div className="card-stagger mb-3" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
+                <MatchCardPasse match={match} lang={lang} />
+              </div>
+            </div>
+          )
+        })
+      })()}
     </div>
   )
 }

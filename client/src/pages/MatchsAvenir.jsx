@@ -10,6 +10,12 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
   const [aVenir,  setAVenir]  = useState([])
   const [enCours, setEnCours] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showOnlyMissing, setShowOnlyMissing] = useState(false)
+
+  // Met à jour le state local quand un prono est sauvegardé (compteur temps réel)
+  function handlePronoSaved(matchId, a, b) {
+    setAVenir(prev => prev.map(m => m.id === matchId ? { ...m, score_predit_a: a, score_predit_b: b } : m))
+  }
 
   function applyData(data) {
     if (data.error || !Array.isArray(data)) { setLoading(false); return }
@@ -67,23 +73,61 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
         </>
       )}
 
-      {/* Section À venir */}
-      <h2 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">
-        {t(lang, 'upcoming')}
-      </h2>
+      {/* Section À venir — compteur + filtre */}
+      {(() => {
+        const placed = aVenir.filter(m => m.score_predit_a != null).length
+        const total = aVenir.length
+        return (
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base font-semibold text-gray-700 dark:text-gray-300">
+              {t(lang, 'upcoming')}
+            </h2>
+            {total > 0 && (
+              <button
+                onClick={() => setShowOnlyMissing(v => !v)}
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+                  ${showOnlyMissing
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+              >
+                {t(lang, 'pronosPlaced')} {placed}/{total}
+              </button>
+            )}
+          </div>
+        )
+      })()}
       {aVenir.length === 0 && (
         <p className="text-center text-slate-400 dark:text-slate-600 py-10 text-sm">
           {t(lang, 'noUpcoming')}
         </p>
       )}
       {(() => {
+        // Filtre : si actif, n'affiche que les matchs sans prono
+        const filtered = showOnlyMissing ? aVenir.filter(m => m.score_predit_a == null) : aVenir
+
         // Prochain match sans prono = le plus proche dans le temps sans score prédit
         const nextId = aVenir
           .filter(m => m.score_predit_a == null)
           .sort((a, b) => new Date(a.date_coup_envoi) - new Date(b.date_coup_envoi))[0]?.id ?? null
 
+        // Matchs < 30 min sans prono = "dernier moment"
+        const now = Date.now()
+        const lastChanceIds = new Set(
+          aVenir
+            .filter(m => m.score_predit_a == null && new Date(m.date_coup_envoi).getTime() - now < 30 * 60 * 1000 && new Date(m.date_coup_envoi).getTime() - now > 0)
+            .map(m => m.id)
+        )
+
+        if (showOnlyMissing && filtered.length === 0) {
+          return (
+            <p className="text-center text-slate-400 dark:text-slate-600 py-8 text-sm">
+              {lang === 'fr' ? 'Tous les pronos sont posés !' : 'All predictions are placed!'}
+            </p>
+          )
+        }
+
         return Object.entries(
-          aVenir.reduce((acc, m) => {
+          filtered.reduce((acc, m) => {
             const g = m.groupe ?? '?'
             if (!acc[g]) acc[g] = []
             acc[g].push(m)
@@ -96,7 +140,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
             </p>
             {matchsGroupe.map((match, i) => (
               <div key={match.id} className="card-stagger mb-3" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
-                <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} highlight={match.id === nextId} />
+                <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} highlight={match.id === nextId} lastChance={lastChanceIds.has(match.id)} onPronoSaved={handlePronoSaved} />
               </div>
             ))}
           </div>
