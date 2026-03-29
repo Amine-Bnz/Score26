@@ -5,22 +5,25 @@ import { LastUpdated } from '../components/LastUpdated'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { t } from '../i18n'
 
-export default function MatchsPasses({ userId, lang }) {
+export default function MatchsPasses({ userId, lang, initialData = null }) {
   const [matchs, setMatchs] = useState([])
   const [loading, setLoading] = useState(true)
 
+  function applyData(data) {
+    if (data.error || !Array.isArray(data)) { setLoading(false); return }
+    setMatchs(data.filter(m => m.score_reel_a != null).reverse())
+    setLoading(false)
+  }
+
   function charger() {
-    return getMatchs(userId).then(data => {
-      if (data.error || !Array.isArray(data)) { setLoading(false); return }
-      // Terminés : score réel renseigné (source de vérité), du plus récent au plus ancien
-      setMatchs(data.filter(m => m.score_reel_a != null).reverse())
-      setLoading(false)
-    })
+    return getMatchs(userId).then(applyData)
   }
 
   const { lastUpdate, isPulling, touchHandlers, markUpdated } = useAutoRefresh(charger)
 
+  // Utilise les données prefetchées si disponibles, sinon fetch
   useEffect(() => {
+    if (initialData) { applyData(initialData); markUpdated(); return }
     charger().then(markUpdated)
   }, [userId])
 

@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas'
 import { getUser, getVapidPublicKey, subscribePush, unsubscribePush } from '../api'
 import { t } from '../i18n'
 import LegalModal from '../components/LegalModal'
+import AvatarFallback from '../components/AvatarFallback'
 
 // Convertit la clé VAPID base64url en Uint8Array (requis par pushManager.subscribe)
 function urlBase64ToUint8Array(base64String) {
@@ -133,9 +134,10 @@ export default function Profil({ userId, lang }) {
     <div className="flex flex-col items-center pt-8 gap-5">
       {/* Avatar */}
       <div className="relative">
-        <img
+        <AvatarFallback
           src={avatarSvgUrl(user.avatar_seed)}
-          alt={user.pseudo}
+          pseudo={user.pseudo}
+          size={112}
           className="w-28 h-28 rounded-full bg-slate-100 dark:bg-slate-800 ring-2 ring-slate-200 dark:ring-slate-700"
         />
       </div>

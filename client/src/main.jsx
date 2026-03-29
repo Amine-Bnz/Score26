@@ -4,14 +4,15 @@ import './index.css'
 import App from './App.jsx'
 import Admin from './pages/Admin.jsx'
 import NotFound from './pages/NotFound.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 
 const root = createRoot(document.getElementById('root'))
 const path = window.location.pathname
 
 if (path === '/admin') {
-  root.render(<StrictMode><Admin /></StrictMode>)
+  root.render(<StrictMode><ErrorBoundary><Admin /></ErrorBoundary></StrictMode>)
 } else if (path === '/') {
-  root.render(<StrictMode><App /></StrictMode>)
+  root.render(<StrictMode><ErrorBoundary><App /></ErrorBoundary></StrictMode>)
 } else {
   root.render(<StrictMode><NotFound /></StrictMode>)
 }

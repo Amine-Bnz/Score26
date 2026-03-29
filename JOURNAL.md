@@ -897,3 +897,60 @@ Aucune visibilité sur l'activité de l'app : combien d'users, combien de pronos
 | 3 | Performance & résilience | 6–8 | Basse — confort & visibilité |
 
 **Suivant :** Lot 1 — Étape 1 : Error boundary React
+
+---
+
+## 2026-03-28 — v3.2 Lot 1 : Robustesse technique (étapes 1–3)
+
+### Étape 1 : Error boundary React
+**Fait :** Création d'un composant `ErrorBoundary` (class component, seul moyen de capter `componentDidCatch`). Attrape toute erreur React non gérée et affiche un écran de fallback bilingue FR/EN avec bouton "Recharger". Intégré dans `main.jsx` autour de `<App />` et `<Admin />`.
+**Fichiers :** `client/src/components/ErrorBoundary.jsx` (créé), `client/src/main.jsx` (modifié)
+**Décisions :** Pas de librairie (react-error-boundary), le composant natif suffit. La page 404 (`NotFound`) reste hors ErrorBoundary car elle ne peut pas planter.
+
+### Étape 2 : Compression réponses API
+**Fait :** Ajout du middleware `compression` (gzip/brotli) sur le serveur Express. Toutes les réponses JSON sont compressées automatiquement, réduisant la taille des payloads réseau (~70% de réduction sur les réponses matchs).
+**Fichiers :** `server/index.js` (ajout `require('compression')` + `app.use(compression())`)
+**Décisions :** Placé après `helmet()` et avant CORS/routes pour couvrir toutes les réponses.
+
+### Étape 3 : Tests admin et sync
+**Fait :** 19 nouveaux tests couvrant les routes `/api/admin/*` et `/api/sync/*` :
+- **admin (13 tests)** : middleware checkToken (sans token, mauvais token, token par défaut, bon token query/header), validation PATCH (scores lettres/négatifs/>99, statut invalide, match 404), opérations PATCH (changement statut, saisie score + calcul points, reset)
+- **sync (6 tests)** : middleware adminOnly (même pattern), GET /status (compteurs), POST /calendrier et /resultats (appels mockés)
+- Total suite de tests : 48 tests, 0 fail
+**Fichiers :** `server/tests/admin.test.js` (créé), `server/tests/sync.test.js` (créé), `server/package.json` (script test mis à jour)
+**Décisions :** Mock du logger (silencieux) et de footballData (évite les appels réseau). Même pattern que les tests existants (BDD in-memory, injection via require.cache).
+
+---
+
+## 2026-03-28 — v3.2 Lot 2 : UX & engagement (étapes 4–5)
+
+### Étape 4 : Confetti score exact (au tap)
+**Fait :** Au tap sur une card "match passé" avec score exact (🎯 50 pts), un tir de confetti explose depuis le point de clic. Un seul tir par card par session (flag `useRef`). Respecte `disableForReducedMotion` pour l'accessibilité. Haptic feedback (`navigator.vibrate(15)`).
+**Fichiers :** `client/src/components/MatchCard.jsx` (ajout import `canvas-confetti`, logique `handleClick` + `firedRef` dans `MatchCardPasse`)
+**Décisions :** `canvas-confetti` (~3KB gzip), pas de lib plus lourde. Déclenché au tap (pas au chargement de page) pour éviter le spam à chaque visite sur "matchs passés". Cursor pointer uniquement sur les cards exact.
+
+### Étape 5 : Onboarding guidé
+**Fait :** Overlay semi-transparent au premier lancement avec flèche animée pointant sur les inputs score + faux inputs pour montrer le geste. Bilingue FR/EN. Disparaît au premier tap n'importe où. Flag `score26_onboarded` dans localStorage pour ne l'afficher qu'une seule fois.
+**Fichiers :** `client/src/components/OnboardingTip.jsx` (créé), `client/src/pages/MatchsAvenir.jsx` (intégration), `client/src/index.css` (animation `animate-fade-in`)
+**Décisions :** Pas de librairie externe (pas de react-joyride). SafeStorage avec try-catch (Safari private browsing). Overlay positionné au centre de l'écran (pas ancré sur un input spécifique) pour rester simple et fiable.
+
+---
+
+## 2026-03-28 — v3.2 Lot 3 : Performance & résilience (étapes 6–8)
+
+### Étape 6 : Prefetch intelligent
+**Fait :** Au montage de `App.jsx`, un appel `getMatchs(userId)` prefetch toutes les données matchs et les stocke dans `prefetchedMatchs`. Les pages `MatchsAvenir` et `MatchsPasses` reçoivent ces données en `initialData` et les utilisent pour le premier rendu (pas de spinner). Les refreshes suivants (polling, pull-to-refresh) continuent de fetcher normalement.
+**Fichiers :** `client/src/App.jsx` (ajout prefetch + prop `initialData`), `client/src/pages/MatchsAvenir.jsx` (accepte `initialData`, logique `applyData` extraite), `client/src/pages/MatchsPasses.jsx` (même pattern)
+**Décisions :** Un seul appel API au montage, partagé entre les deux pages. Pas de cache complexe, juste un state dans App. Le prefetch ne bloque pas — si la réponse arrive après le changement d'onglet, la page fait son propre fetch.
+
+### Étape 7 : Fallback avatar DiceBear
+**Fait :** Composant `AvatarFallback` : affiche l'image DiceBear normalement, et si le CDN est down (`onError`), bascule vers un cercle coloré avec les 2 premières lettres du pseudo. Couleur déterministe via un hash du pseudo (même pseudo = même couleur, toujours).
+**Fichiers :** `client/src/components/AvatarFallback.jsx` (créé), `client/src/pages/Profil.jsx` (remplace `<img>` par `<AvatarFallback>`)
+**Décisions :** La ShareCard (html2canvas) garde un `<img>` brut car le fallback React ne fonctionne pas dans le contexte de capture canvas. Le fallback utilise 10 couleurs vives pour une bonne lisibilité dark/light.
+
+### Étape 8 : Métriques basiques dans les logs
+**Fait :** Job `setInterval` toutes les heures dans `lancerPolling()` qui log un résumé structuré : nombre d'users, total de pronos, matchs en cours, matchs terminés, abonnements push. Visible dans `fly logs` sans outil externe.
+**Fichiers :** `server/index.js` (ajout bloc `[metrics]` dans `lancerPolling`)
+**Décisions :** Compteurs simples via `COUNT(*)` SQLite. Pas de colonne `created_at` sur pronos → on log le total plutôt que "pronos des 24h". 5 requêtes légères, exécutées une fois par heure → impact négligeable.
+
+**v3.2 terminée.** 48 tests backend, 0 fail. Build frontend OK.

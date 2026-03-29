@@ -2,28 +2,31 @@ import { useEffect, useState } from 'react'
 import { getMatchs } from '../api'
 import { MatchCardAvenir, MatchCardActive } from '../components/MatchCard'
 import { LastUpdated } from '../components/LastUpdated'
+import OnboardingTip from '../components/OnboardingTip'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { t } from '../i18n'
 
-export default function MatchsAvenir({ userId, lang, isOnline = true }) {
+export default function MatchsAvenir({ userId, lang, isOnline = true, initialData = null }) {
   const [aVenir,  setAVenir]  = useState([])
   const [enCours, setEnCours] = useState([])
   const [loading, setLoading] = useState(true)
 
+  function applyData(data) {
+    if (data.error || !Array.isArray(data)) { setLoading(false); return }
+    setEnCours(data.filter(m => m.statut === 'en_cours'))
+    setAVenir(data.filter(m => m.score_reel_a == null && m.statut !== 'en_cours'))
+    setLoading(false)
+  }
+
   function charger() {
-    return getMatchs(userId).then(data => {
-      if (data.error || !Array.isArray(data)) { setLoading(false); return }
-      // En cours : statut explicitement 'en_cours'
-      setEnCours(data.filter(m => m.statut === 'en_cours'))
-      // À venir : pas encore de score réel ET pas en cours
-      setAVenir(data.filter(m => m.score_reel_a == null && m.statut !== 'en_cours'))
-      setLoading(false)
-    })
+    return getMatchs(userId).then(applyData)
   }
 
   const { lastUpdate, isPulling, touchHandlers, markUpdated } = useAutoRefresh(charger)
 
+  // Utilise les données prefetchées si disponibles, sinon fetch
   useEffect(() => {
+    if (initialData) { applyData(initialData); markUpdated(); return }
     charger().then(markUpdated)
   }, [userId])
 
@@ -33,6 +36,9 @@ export default function MatchsAvenir({ userId, lang, isOnline = true }) {
 
   return (
     <div className="flex flex-col gap-3" {...touchHandlers}>
+      {/* Overlay onboarding (premier lancement uniquement) */}
+      <OnboardingTip lang={lang} />
+
       {/* Indicateur pull-to-refresh */}
       {isPulling && (
         <div className="flex justify-center pb-1 text-blue-400 text-lg animate-spin select-none">

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/scoring.test.js tests/users.test.js tests/pronos.test.js",
+    "test": "node --test tests/scoring.test.js tests/users.test.js tests/pronos.test.js tests/admin.test.js tests/sync.test.js",
     "dev": "nodemon index.js"
   },
   "keywords": [],
@@ -13,6 +13,7 @@
   "type": "commonjs",
   "dependencies": {
     "better-sqlite3": "^12.8.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",

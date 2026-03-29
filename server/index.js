@@ -1,8 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
-const helmet  = require('helmet');
-const logger  = require('./logger');
+const helmet      = require('helmet');
+const compression = require('compression');
+const logger      = require('./logger');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,9 @@ const { envoyerNotifAvantMatch }  = require('./services/pushNotifications');
 
 // Sécurité : headers HTTP (X-Content-Type-Options, X-Frame-Options, etc.)
 app.use(helmet());
+
+// Compression gzip/brotli des réponses HTTP
+app.use(compression());
 
 // CORS : ouvert en dev, restreint au domaine en prod via CORS_ORIGIN dans .env
 // En production sans CORS_ORIGIN configuré → warning et refus par défaut
@@ -107,4 +111,16 @@ function lancerPolling() {
   } else {
     logger.warn('Notifications push désactivées — générer les clés avec : node generate-vapid.js');
   }
+
+  // ── Métriques basiques — toutes les heures ──────────────────────────────
+  setInterval(() => {
+    try {
+      const users      = db.prepare('SELECT COUNT(*) as n FROM users').get().n;
+      const pronos     = db.prepare('SELECT COUNT(*) as n FROM pronos').get().n;
+      const enCours    = db.prepare("SELECT COUNT(*) as n FROM matchs WHERE statut = 'en_cours'").get().n;
+      const termines   = db.prepare("SELECT COUNT(*) as n FROM matchs WHERE statut = 'termine'").get().n;
+      const pushSubs   = db.prepare('SELECT COUNT(*) as n FROM push_subscriptions').get().n;
+      logger.info({ users, pronos_total: pronos, matchs_en_cours: enCours, matchs_termines: termines, push_subs: pushSubs }, '[metrics] Résumé');
+    } catch (e) { logger.error({ err: e }, '[metrics] Erreur'); }
+  }, 60 * 60 * 1000);
 }

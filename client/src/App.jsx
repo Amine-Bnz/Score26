@@ -8,6 +8,7 @@ import MatchsAvenir from './pages/MatchsAvenir'
 import MatchsPasses from './pages/MatchsPasses'
 import Profil from './pages/Profil'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { getMatchs } from './api'
 
 // Lecture localStorage sécurisée (navigation privée Safari peut throw)
 function lsGet(key, fallback) {
@@ -32,12 +33,21 @@ export default function App() {
   const [theme,  setTheme]  = useState(() => lsGet('score26_theme', 'dark'))
   const [lang,   setLang]   = useState(() => lsGet('score26_lang', 'fr'))
   const isOnline = useOnlineStatus()
+  const [prefetchedMatchs, setPrefetchedMatchs] = useState(null)
 
   // Récupération de l'identité persistée en localStorage
   useEffect(() => {
     const id = lsGet('score26_user_id', null)
     if (id) setUserId(id)
   }, [])
+
+  // Prefetch des matchs au montage (évite le spinner au changement d'onglet)
+  useEffect(() => {
+    if (!userId) return
+    getMatchs(userId).then(data => {
+      if (!data.error && Array.isArray(data)) setPrefetchedMatchs(data)
+    }).catch(() => {})
+  }, [userId])
 
   // Persistance et application du thème
   useEffect(() => {
@@ -66,8 +76,8 @@ export default function App() {
       />
 
       <main className="pb-20 px-4 pt-4 overflow-hidden">
-        {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} /></div>}
-        {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} /></div>}
+        {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} initialData={prefetchedMatchs} /></div>}
+        {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} initialData={prefetchedMatchs} /></div>}
         {page === 'profil' && <div key="profil" className={`page-slide-${slideDir}`}><Profil       userId={userId} lang={lang} /></div>}
       </main>
 

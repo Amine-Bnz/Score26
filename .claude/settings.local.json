@@ -13,7 +13,8 @@
       "Bash(find /c/Users/redcr/Score26 -type f \\\\\\(-name .env -o -name credentials* -o -name secret* -o -name *.key -o -name *.pem \\\\\\))",
       "Bash(find /c/Users/redcr/Score26/client/src -type f -name *.jsx -o -name *.js)",
       "Bash(npm run:*)",
-      "Bash(echo \"exit:$?\")"
+      "Bash(echo \"exit:$?\")",
+      "Bash(node --test tests/admin.test.js tests/sync.test.js)"
     ]
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import confetti from 'canvas-confetti'
 import { upsertProno } from '../api'
 import { t, splitTeam } from '../i18n'
 
@@ -247,9 +248,24 @@ export function MatchCardActive({ match, lang }) {
 export function MatchCardPasse({ match, lang }) {
   const resultat = getResultat(match)
   const style = resultStyles[resultat]
+  const firedRef = useRef(false)
+
+  // Confetti au tap sur une card "score exact" (une seule fois par session)
+  function handleClick(e) {
+    if (resultat !== 'exact' || firedRef.current) return
+    firedRef.current = true
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = (e.clientX || rect.left + rect.width / 2) / window.innerWidth
+    const y = (e.clientY || rect.top + rect.height / 2) / window.innerHeight
+    confetti({ particleCount: 60, spread: 55, origin: { x, y }, disableForReducedMotion: true })
+    navigator.vibrate?.(15)
+  }
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 overflow-hidden">
+    <div
+      className={`bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 overflow-hidden ${resultat === 'exact' ? 'cursor-pointer' : ''}`}
+      onClick={handleClick}
+    >
       {/* Barre colorée en haut selon résultat */}
       <div className={`h-1 w-full ${style.bar}`} />
 
