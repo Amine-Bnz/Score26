@@ -89,6 +89,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
   const debounceRef = useRef(null)
   const savedTimerRef = useRef(null)
   const prevScoreRef = useRef({ a: match.score_predit_a ?? '', b: match.score_predit_b ?? '' })
+  const inputBRef = useRef(null)
 
   // Nettoyage des timers au démontage (évite setState sur composant démonté)
   useEffect(() => {
@@ -161,16 +162,29 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
             type="number" min="0" max="99"
             value={scoreA}
             disabled={isVerrouille}
-            onChange={e => handleChange(e.target.value, setScoreA, scoreB, true)}
+            onChange={e => {
+              handleChange(e.target.value, setScoreA, scoreB, true)
+              // Auto-focus vers input B quand on tape un chiffre
+              if (e.target.value !== '' && !isNaN(e.target.value)) {
+                setTimeout(() => { inputBRef.current?.focus(); inputBRef.current?.select() }, 0)
+              }
+            }}
             className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
               ${saved === 'ok' ? 'border-solid border-green-400' : saved === 'error' ? 'border-solid border-red-400' : saved === 'saving' ? 'border-solid border-blue-300' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
           />
           <span className="text-slate-300 dark:text-slate-600 font-bold text-lg select-none">—</span>
           <input
+            ref={inputBRef}
             type="number" min="0" max="99"
             value={scoreB}
             disabled={isVerrouille}
-            onChange={e => handleChange(e.target.value, setScoreB, scoreA, false)}
+            onChange={e => {
+              handleChange(e.target.value, setScoreB, scoreA, false)
+              // Fermer le clavier après saisie du score B
+              if (e.target.value !== '' && !isNaN(e.target.value)) {
+                setTimeout(() => e.target.blur(), 0)
+              }
+            }}
             className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
               ${saved === 'ok' ? 'border-solid border-green-400' : saved === 'error' ? 'border-solid border-red-400' : saved === 'saving' ? 'border-solid border-blue-300' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
           />
