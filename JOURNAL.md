@@ -762,3 +762,75 @@ Aucun backup automatique de la base de données. Si le volume Fly.io est corromp
 | 5 | Ops & finitions | 17–20 | Basse — confort ops |
 
 **Suivant :** Lot 1 — Étape 1 : Guard token sync.js
+
+---
+
+## 2026-03-28 — v3.1 Lot 1 : Sécurité & robustesse (étapes 1–5)
+
+**Fait :**
+- **Étape 1** : Guard token par défaut dans `sync.js` — aligné sur `admin.js` : refuse si `ADMIN_TOKEN` vaut `change_this_before_deploy` ou est absent. Log warn avec IP.
+- **Étape 2** : Timeout 30s sur les `fetch()` vers football-data.org et API-Football via `AbortSignal.timeout(30_000)`.
+- **Étape 3** : Validation scores admin PATCH — entiers 0-99 obligatoires, statut limité à `a_venir`/`en_cours`/`termine`. Utilise les valeurs parsées (pas les brutes du body).
+- **Étape 4** : Fix memory leak MatchCard — `useEffect` cleanup qui `clearTimeout` les `debounceRef` et `savedTimerRef` au démontage.
+- **Étape 5** : Helpers `lsGet`/`lsSet` avec try-catch dans `App.jsx` — protège contre le throw en navigation privée Safari.
+
+**Fichiers :** `routes/sync.js`, `services/footballData.js`, `services/apiFootball.js`, `routes/admin.js`, `MatchCard.jsx`, `App.jsx`
+
+**Résultat :** 29/29 tests backend, build frontend clean.
+
+---
+
+## 2026-03-28 — v3.1 Lot 2 : Accessibilité (étapes 6–8)
+
+**Fait :**
+- **Étape 6** : `focus-visible:ring-2 ring-blue-500` sur tous les boutons (Header, Navbar, Profil, Onboarding, LegalModal) et inputs score. `focus-visible` au lieu de `focus` pour ne pas gêner les taps mobile.
+- **Étape 7** : Hook `useFocusTrap` partagé (Header.jsx) + focus trap inline (LegalModal.jsx). `role="dialog"`, `aria-modal="true"`, `aria-label` bilingue. Fermeture Escape, Tab piégé dans la modale.
+- **Étape 8** : Icônes dans le badge résultat : 🎯 (exact), ✅ (bonne issue), ❌ (raté), — (neutre). Les daltoniens distinguent le résultat sans la couleur.
+
+**Fichiers :** `Header.jsx`, `Navbar.jsx`, `MatchCard.jsx`, `Profil.jsx`, `Onboarding.jsx`, `LegalModal.jsx`
+
+**Résultat :** Build frontend clean.
+
+---
+
+## 2026-03-28 — v3.1 Lot 3 : Nouvelles features UX (étapes 9–12)
+
+**Fait :**
+- **Étape 9** : Prono du jour — le premier match `a_venir` sans prono (trié par date) reçoit un `ring-2 ring-blue-500/50` + badge "Prochain"/"Next". Calcul côté client dans `MatchsAvenir.jsx`.
+- **Étape 10** : Countdown dynamique — composant `DateOrCountdown` : si match à <24h, affiche "dans 2h30"/"in 2h30" avec refresh `setInterval(60_000)`. Sinon date statique classique.
+- **Étape 11** : Slide horizontal entre onglets — `slideFromLeft`/`slideFromRight` CSS. Direction calculée via ordre des pages (avenir=0, passes=1, profil=2). `overflow-hidden` sur le main.
+- **Étape 12** : Haptic feedback — `navigator.vibrate?.(10)` sur navbar, toggles langue/thème, bouton info, confirmation sauvegarde prono. Ignoré silencieusement sur desktop.
+
+**Fichiers :** `MatchsAvenir.jsx`, `MatchCard.jsx`, `index.css`, `App.jsx`, `Navbar.jsx`, `Header.jsx`
+
+**Résultat :** 29/29 tests, build clean.
+
+---
+
+## 2026-03-29 — v3.1 Lot 4 : Performance technique (étapes 13–16)
+
+**Fait :**
+- **Étape 13** : Optimistic UI — 3 états visuels (saving=bleu, ok=vert, error=rouge). Flash "saving" dès l'envoi, rollback aux valeurs précédentes (`prevScoreRef`) si erreur API. Détecte aussi les erreurs retournées par `handleResponse`.
+- **Étape 14** : Cache DiceBear — règle Workbox `CacheFirst` pour `api.dicebear.com`, cache `dicebear-avatars`, TTL 30 jours, max 200 entrées. Avatars fonctionnent offline.
+- **Étape 15** : Backoff exponentiel — `pollWithBackoff()` remplace les `setInterval` pour sync résultats, sync live et push. Délai ×2 à chaque erreur consécutive (max 30min), reset au succès. Log `nextRetryMs`.
+- **Étape 16** : Requête push optimisée — sous-requête filtre les matchs dans la fenêtre 55-65min d'abord (0-3 matchs), puis `JOIN` subscriptions. Plus de produit cartésien 72×N.
+
+**Fichiers :** `MatchCard.jsx`, `vite.config.js`, `index.js`, `pushNotifications.js`
+
+**Résultat :** 29/29 tests, build clean.
+
+---
+
+## 2026-03-29 — v3.1 Lot 5 : Ops & finitions (étapes 17–20)
+
+**Fait :**
+- **Étape 17** : Logging admin actions — `logger.info()` après chaque opération PATCH (statut, score, recalcul, reset) avec IP, match_id et action. Trace d'audit complète.
+- **Étape 18** : Script `server/backup.js` — utilise `db.backup()` de better-sqlite3 pour copier atomiquement la base vers un fichier horodaté (`score26-backup-2026-03-29T14-30-00.db`). Usage : `fly ssh console -C "node backup.js"`.
+- **Étape 19** : CORS fail-safe — en production (`NODE_ENV=production`) sans `CORS_ORIGIN` configuré, les requêtes cross-origin sont refusées (`origin: false`) + warning loggé. En dev, toujours ouvert (`*`).
+- **Étape 20** : Email de contact mis à jour — `score26officiel@gmail.com` dans `LegalModal.jsx` (remplace le placeholder) et dans le fallback VAPID de `pushNotifications.js`.
+
+**Fichiers :** `routes/admin.js`, `backup.js` (nouveau), `index.js`, `LegalModal.jsx`, `pushNotifications.js`
+
+**Résultat :** 29/29 tests, build clean.
+
+**v3.1 complète — 20 étapes, 5 lots terminés.**

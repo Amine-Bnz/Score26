@@ -52,35 +52,41 @@ router.patch('/matchs/:id', checkToken, (req, res) => {
     return res.status(400).json({ error: `Statut invalide (${STATUTS_VALIDES.join(', ')}).` });
   }
 
+  const matchId = req.params.id;
+
   // Mise à jour du statut seul (ex: passer en 'en_cours')
   if (statut && req.body.score_reel_a == null) {
-    db.prepare('UPDATE matchs SET statut = ? WHERE id = ?').run(statut, req.params.id);
+    db.prepare('UPDATE matchs SET statut = ? WHERE id = ?').run(statut, matchId);
+    logger.info({ ip: req.ip, matchId, action: 'statut', statut }, '[admin] Statut modifié');
   }
 
   // Saisie du score réel → statut forcé à 'termine' + calcul des points
   if (req.body.score_reel_a != null && req.body.score_reel_b != null) {
     db.prepare(`
       UPDATE matchs SET score_reel_a = ?, score_reel_b = ?, statut = 'termine' WHERE id = ?
-    `).run(req.body.score_reel_a, req.body.score_reel_b, req.params.id);
-    calculerPoints(req.params.id);
+    `).run(req.body.score_reel_a, req.body.score_reel_b, matchId);
+    calculerPoints(matchId);
+    logger.info({ ip: req.ip, matchId, action: 'score', score: `${req.body.score_reel_a}-${req.body.score_reel_b}` }, '[admin] Score saisi + points calculés');
   }
 
   // Recalcul des points seul (sans changer le score)
   if (recalculer && score_reel_a == null) {
-    calculerPoints(req.params.id);
+    calculerPoints(matchId);
+    logger.info({ ip: req.ip, matchId, action: 'recalcul' }, '[admin] Points recalculés');
   }
 
   // Réinitialisation complète → score NULL, statut a_venir, points pronos remis à NULL
   if (req.body.reset) {
     db.prepare(`
       UPDATE matchs SET score_reel_a = NULL, score_reel_b = NULL, statut = 'a_venir' WHERE id = ?
-    `).run(req.params.id);
+    `).run(matchId);
     db.prepare(`
       UPDATE pronos SET points_obtenus = NULL WHERE match_id = ?
-    `).run(req.params.id);
+    `).run(matchId);
+    logger.info({ ip: req.ip, matchId, action: 'reset' }, '[admin] Match réinitialisé');
   }
 
-  res.json(db.prepare('SELECT * FROM matchs WHERE id = ?').get(req.params.id));
+  res.json(db.prepare('SELECT * FROM matchs WHERE id = ?').get(matchId));
 });
 
 module.exports = router;

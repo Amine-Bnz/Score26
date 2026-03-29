@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from 'react'
 
-const CONTACT_EMAIL = 'contact@score26.fr' // TODO : remplacer par la vraie adresse
+const CONTACT_EMAIL = 'score26officiel@gmail.com'
 
 export default function LegalModal({ lang, onClose }) {
   const isFr = lang === 'fr'

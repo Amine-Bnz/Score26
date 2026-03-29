@@ -17,9 +17,12 @@ const { envoyerNotifAvantMatch }  = require('./services/pushNotifications');
 app.use(helmet());
 
 // CORS : ouvert en dev, restreint au domaine en prod via CORS_ORIGIN dans .env
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-}));
+// En production sans CORS_ORIGIN configuré → warning et refus par défaut
+const corsOrigin = process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? false : '*');
+if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
+  logger.warn('CORS_ORIGIN non configuré en production — requêtes cross-origin refusées');
+}
+app.use(cors({ origin: corsOrigin }));
 
 app.use(express.json());
 

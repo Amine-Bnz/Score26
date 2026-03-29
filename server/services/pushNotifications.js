@@ -11,7 +11,7 @@ function initWebPush() {
   if (vapidInitialized) return true
   const pub  = process.env.VAPID_PUBLIC_KEY
   const priv = process.env.VAPID_PRIVATE_KEY
-  const mail = process.env.VAPID_EMAIL || 'mailto:admin@score26.app'
+  const mail = process.env.VAPID_EMAIL || 'mailto:score26officiel@gmail.com'
   if (!pub || !priv || pub === 'your_vapid_public_key') return false
   webPush.setVapidDetails(mail, pub, priv)
   vapidInitialized = true
