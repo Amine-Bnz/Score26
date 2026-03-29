@@ -834,3 +834,66 @@ Aucun backup automatique de la base de données. Si le volume Fly.io est corromp
 **Résultat :** 29/29 tests, build clean.
 
 **v3.1 complète — 20 étapes, 5 lots terminés.**
+
+---
+
+## 2026-03-29 — Scope v3.2 : Polish final & résilience
+
+Dernières améliorations avant le lancement. Focus sur la robustesse, l'expérience utilisateur et la performance réseau.
+
+---
+
+### Lot 1 — Robustesse technique (haute priorité)
+
+**Étape 1 : Error boundary React**
+Si un composant crash (erreur JS inattendue), toute l'app devient un écran blanc. L'user ne peut rien faire à part recharger manuellement — et il ne sait même pas qu'il doit le faire.
+→ Créer un composant `ErrorBoundary` (class component, seul moyen en React) qui catch les erreurs de rendu et affiche un fallback "Oups, quelque chose s'est mal passé" avec un bouton "Recharger". Wrapper l'app dans `main.jsx`.
+
+**Étape 2 : Compression réponses API**
+Les réponses JSON du serveur ne sont pas compressées. Sur mobile 3G, la liste des 72 matchs (avec pronos) peut peser lourd.
+→ `npm install compression` + `app.use(compression())` dans `index.js`, avant les routes. Réduit la taille des réponses de ~60% (gzip automatique).
+
+**Étape 3 : Tests admin et sync**
+Les routes `/api/admin` et `/api/sync` ne sont pas couvertes par les tests. Pas de filet de sécurité si on modifie le scoring admin ou la validation.
+→ `tests/admin.test.js` : PATCH score valide, PATCH score invalide (>99, négatif), PATCH statut invalide, token manquant → 401, reset match, recalcul.
+→ `tests/sync.test.js` : token manquant → 401, token par défaut refusé, GET status retourne les compteurs.
+
+---
+
+### Lot 2 — UX & engagement (moyenne priorité)
+
+**Étape 4 : Confetti score exact (au tap)**
+Quand un match passé a un score exact (50 pts), l'user peut taper sur la card pour déclencher une micro-animation confetti. Pas automatique au chargement de la page (sinon ça spamme à chaque visite).
+→ `npm install canvas-confetti` (~3KB gzip). Au tap sur une `MatchCardPasse` avec `resultat === 'exact'`, déclencher `confetti()` depuis le point de clic. Un seul tir par card par session (flag `useRef`).
+
+**Étape 5 : Onboarding guidé**
+Les nouveaux users ne comprennent pas immédiatement les inputs dashed "0 — 0" sur les cards. Ils tapent partout sauf au bon endroit.
+→ Au premier lancement (flag `score26_onboarded` dans localStorage), afficher un overlay semi-transparent avec une flèche pointant sur le premier input score et un texte "Tape ton score ici" / "Enter your score here". Disparaît au premier tap n'importe où. Pas de librairie externe, juste un composant `OnboardingTip.jsx` conditionnel.
+
+---
+
+### Lot 3 — Performance & résilience (basse priorité)
+
+**Étape 6 : Prefetch intelligent**
+Quand l'user est sur "À venir", les données "Passés" ne sont pas encore chargées. Le changement d'onglet montre un spinner.
+→ Prefetch silencieux des données `getMatchs()` au montage de l'app (une seule fois), stocker dans un state partagé via `App.jsx`. Les pages enfants consomment les données déjà chargées au lieu de refaire un fetch.
+
+**Étape 7 : Fallback avatar DiceBear**
+Si le CDN DiceBear est down et que le cache SW est vide (nouvel user, cache purgé), l'avatar affiche une image cassée.
+→ Ajouter `onError` sur le `<img>` du profil et de la card de partage : remplacer par un cercle coloré avec les initiales du pseudo (2 premières lettres). Couleur dérivée du hash du pseudo.
+
+**Étape 8 : Métriques basiques dans les logs**
+Aucune visibilité sur l'activité de l'app : combien d'users, combien de pronos par jour, combien de push envoyées.
+→ Job périodique (toutes les heures) dans `index.js` qui log un résumé : `{ users: 142, pronos_today: 87, matchs_en_cours: 1, push_subs: 98 }`. Visible dans `fly logs` sans outil externe.
+
+---
+
+### Résumé par priorité
+
+| Lot | Nom | Étapes | Priorité |
+|-----|-----|--------|----------|
+| 1 | Robustesse technique | 1–3 | Haute — filet de sécurité |
+| 2 | UX & engagement | 4–5 | Moyenne — différenciation |
+| 3 | Performance & résilience | 6–8 | Basse — confort & visibilité |
+
+**Suivant :** Lot 1 — Étape 1 : Error boundary React
