@@ -8,7 +8,7 @@ export default function Navbar({ page, onNavigate, lang }) {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800/60 flex h-16 z-10">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface-100/80 dark:bg-surface-950/80 backdrop-blur-xl border-t border-surface-200 dark:border-surface-800/30 flex h-16 z-10">
       {items.map(({ key, Icon, labelFr, labelEn }) => {
         const active = page === key
         const label  = lang === 'fr' ? labelFr : labelEn
@@ -16,14 +16,13 @@ export default function Navbar({ page, onNavigate, lang }) {
           <button
             key={key}
             onClick={() => { navigator.vibrate?.(10); onNavigate(key) }}
-            className="flex flex-col items-center justify-center flex-1 gap-1 transition-colors active:scale-90 transition-transform relative focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset"
+            className="flex flex-col items-center justify-center flex-1 gap-0.5 active:scale-90 transition-transform relative focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
             aria-label={label}
           >
-            {active && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-500 rounded-full" />
-            )}
-            <Icon className={`w-6 h-6 transition-colors ${active ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500'}`} />
-            <span className={`text-[10px] font-semibold transition-colors ${active ? 'text-blue-500' : 'text-slate-400 dark:text-slate-500'}`}>
+            <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${active ? 'bg-accent/10' : ''}`}>
+              <Icon className={`w-[22px] h-[22px] transition-colors ${active ? 'text-accent' : 'text-surface-400 dark:text-surface-500'}`} />
+            </div>
+            <span className={`text-[10px] font-medium transition-colors ${active ? 'text-accent' : 'text-surface-400 dark:text-surface-500'}`}>
               {label}
             </span>
           </button>

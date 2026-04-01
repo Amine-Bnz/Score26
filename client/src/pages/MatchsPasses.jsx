@@ -28,14 +28,14 @@ export default function MatchsPasses({ userId, lang, initialData = null }) {
   }, [userId])
 
   if (loading) {
-    return <div className="flex justify-center py-20 text-gray-400">...</div>
+    return <div className="flex justify-center py-20 text-surface-400">...</div>
   }
 
   return (
     <div className="flex flex-col gap-3" {...touchHandlers}>
       {/* Indicateur pull-to-refresh */}
       {isPulling && (
-        <div className="flex justify-center pb-1 text-blue-400 text-lg animate-spin select-none">
+        <div className="flex justify-center pb-1 text-accent text-lg animate-spin select-none">
           ↻
         </div>
       )}
@@ -45,11 +45,11 @@ export default function MatchsPasses({ userId, lang, initialData = null }) {
         <LastUpdated timestamp={lastUpdate} lang={lang} />
       </div>
 
-      <h2 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">
+      <h2 className="font-display text-base font-bold text-surface-800 dark:text-surface-200 mb-1">
         {t(lang, 'past')}
       </h2>
       {matchs.length === 0 && (
-        <p className="text-center text-slate-400 dark:text-slate-600 py-10 text-sm">
+        <p className="text-center text-surface-400 dark:text-surface-600 py-10 text-sm">
           {t(lang, 'noPast')}
         </p>
       )}
@@ -67,11 +67,11 @@ export default function MatchsPasses({ userId, lang, initialData = null }) {
           return (
             <div key={match.id}>
               {showSep && (
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-3 mb-1 pl-1">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-surface-400 dark:text-surface-500 mt-4 mb-2 pl-0.5">
                   {matchDate}
                 </p>
               )}
-              <div className="card-stagger mb-3" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
+              <div className="card-stagger mb-2.5" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
                 <MatchCardPasse match={match} lang={lang} />
               </div>
             </div>

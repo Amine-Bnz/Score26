@@ -4,7 +4,7 @@ const GROUPES = ['A','B','C','D','E','F','G','H','I','J','K','L']
 const API_BASE = (import.meta.env.VITE_API_URL ?? '') + '/api'
 
 const STATUT_LABEL = {
-  a_venir:  { label: 'À venir',  cls: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' },
+  a_venir:  { label: 'À venir',  cls: 'bg-surface-200 text-surface-700 dark:bg-surface-700 dark:text-surface-300' },
   en_cours: { label: 'En cours', cls: 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300' },
   termine:  { label: 'Terminé',  cls: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
 }
@@ -86,13 +86,13 @@ export default function Admin() {
   }
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-500">
+    <div className="flex items-center justify-center min-h-screen bg-surface-100 dark:bg-surface-900 text-surface-500">
       Chargement…
     </div>
   )
 
   if (error) return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900">
+    <div className="flex items-center justify-center min-h-screen bg-surface-100 dark:bg-surface-900">
       <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-xl p-6 max-w-sm text-center">
         <div className="text-2xl mb-2">⛔</div>
         <p className="font-semibold">{error}</p>
@@ -107,13 +107,13 @@ export default function Admin() {
   }, {})
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 pb-12">
+    <div className="min-h-screen bg-surface-100 dark:bg-surface-900 text-surface-800 dark:text-surface-200 pb-12">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 shadow px-4 py-3 flex items-center justify-between">
-        <span className="font-bold text-lg tracking-tight">score26 <span className="text-slate-400 font-normal text-sm">/ admin</span></span>
+      <div className="sticky top-0 z-10 bg-white dark:bg-surface-800 shadow px-4 py-3 flex items-center justify-between">
+        <span className="font-display font-bold text-lg tracking-tight">score<span className="text-gold">26</span> <span className="text-surface-400 font-normal text-sm font-sans">/ admin</span></span>
         <button
           onClick={charger}
-          className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+          className="text-sm px-3 py-1.5 rounded-lg bg-surface-100 dark:bg-surface-700 hover:bg-surface-200 dark:hover:bg-surface-600 transition"
         >
           ↻ Rafraîchir
         </button>
@@ -125,7 +125,7 @@ export default function Admin() {
           if (!liste || liste.length === 0) return null
           return (
             <section key={g}>
-              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-surface-400 mb-3">
                 Groupe {g}
               </h2>
               <div className="space-y-2">
@@ -133,18 +133,18 @@ export default function Admin() {
                   const st = STATUT_LABEL[m.statut] ?? STATUT_LABEL.a_venir
                   const sc = scores[m.id] ?? { a: '', b: '' }
                   return (
-                    <div key={m.id} className="bg-white dark:bg-slate-800 rounded-xl px-4 py-3 shadow-sm">
+                    <div key={m.id} className="bg-white dark:bg-surface-800 rounded-xl px-4 py-3 shadow-sm">
                       {/* Ligne principale */}
                       <div className="flex items-center gap-3 flex-wrap">
                         {/* Journée + date */}
-                        <span className="text-xs text-slate-400 w-[70px] shrink-0">
+                        <span className="text-xs text-surface-400 w-[70px] shrink-0">
                           J{m.journee} · {formatDate(m.date_coup_envoi)}
                         </span>
 
                         {/* Équipes */}
                         <span className="flex-1 min-w-0 text-sm font-medium truncate">
                           {shortName(m.equipe_a)}
-                          <span className="text-slate-400 mx-1">vs</span>
+                          <span className="text-surface-400 mx-1">vs</span>
                           {shortName(m.equipe_b)}
                         </span>
 
@@ -185,7 +185,7 @@ export default function Admin() {
                         {m.statut === 'en_cours' && (
                           <button
                             onClick={() => patcher(m.id, { statut: 'a_venir' }, '↩️ À venir')}
-                            className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition"
+                            className="text-xs px-2.5 py-1 rounded-lg bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 hover:bg-surface-200 transition"
                           >
                             Annuler live
                           </button>
@@ -197,14 +197,14 @@ export default function Admin() {
                             type="number" min="0" max="99"
                             value={sc.a}
                             onChange={e => setScores(s => ({ ...s, [m.id]: { ...s[m.id], a: e.target.value } }))}
-                            className="w-10 text-center text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 py-0.5"
+                            className="w-10 text-center text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 py-0.5"
                           />
-                          <span className="text-slate-400">–</span>
+                          <span className="text-surface-400">–</span>
                           <input
                             type="number" min="0" max="99"
                             value={sc.b}
                             onChange={e => setScores(s => ({ ...s, [m.id]: { ...s[m.id], b: e.target.value } }))}
-                            className="w-10 text-center text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 py-0.5"
+                            className="w-10 text-center text-sm border border-surface-300 dark:border-surface-600 rounded-lg bg-white dark:bg-surface-700 py-0.5"
                           />
                           <button
                             onClick={() => terminer(m.id)}
@@ -218,7 +218,7 @@ export default function Admin() {
                         {m.statut === 'termine' && (
                           <button
                             onClick={() => patcher(m.id, { recalculer: true }, '🔄 Points recalculés')}
-                            className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 transition"
+                            className="text-xs px-2.5 py-1 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition"
                           >
                             Recalculer
                           </button>
@@ -236,7 +236,7 @@ export default function Admin() {
 
                         {/* Feedback */}
                         {feedback[m.id] && (
-                          <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">
+                          <span className="text-xs text-surface-500 dark:text-surface-400 ml-1">
                             {feedback[m.id]}
                           </span>
                         )}

@@ -18,7 +18,7 @@ export function LastUpdated({ timestamp, lang }) {
   else               label = lang === 'fr' ? `il y a ${Math.floor(sec / 60)} min` : `${Math.floor(sec / 60)}min ago`
 
   return (
-    <span className="text-[10px] text-slate-400 dark:text-slate-600">
+    <span className="text-[10px] text-surface-400 dark:text-surface-600">
       {lang === 'fr' ? 'MAJ' : 'Updated'} {label}
     </span>
   )

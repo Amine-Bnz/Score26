@@ -25,7 +25,6 @@ export default function Onboarding({ lang, onComplete }) {
     setError('')
 
     const id = crypto.randomUUID()
-    // Le seed de l'avatar = le pseudo, pour rester déterministe et permanent
     const avatar_seed = trimmed
 
     const res = await createUser({ id, pseudo: trimmed, avatar_seed })
@@ -36,7 +35,6 @@ export default function Onboarding({ lang, onComplete }) {
       return
     }
 
-    // Persistance en localStorage
     localStorage.setItem('score26_user_id', id)
     localStorage.setItem('score26_pseudo', trimmed)
 
@@ -44,12 +42,12 @@ export default function Onboarding({ lang, onComplete }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-surface-100 dark:bg-surface-950 flex flex-col items-center justify-center px-6">
       {/* Logo */}
-      <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-        score<span className="text-blue-500">26</span>
+      <h1 className="font-display text-4xl font-bold text-surface-900 dark:text-white mb-1 tracking-tight">
+        score<span className="text-gold">26</span>
       </h1>
-      <p className="text-gray-500 dark:text-gray-400 text-sm mb-10">
+      <p className="text-surface-400 dark:text-surface-500 text-sm mb-12">
         {t(lang, 'welcome')}
       </p>
 
@@ -62,17 +60,17 @@ export default function Onboarding({ lang, onComplete }) {
           placeholder={t(lang, 'pseudoPlaceholder')}
           value={pseudo}
           onChange={e => setPseudo(e.target.value)}
-          className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-lg"
+          className="w-full px-4 py-3 rounded-xl border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-surface-600 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-center text-lg font-display"
         />
 
         {error && (
-          <p className="text-red-500 text-sm text-center">{error}</p>
+          <p className="text-result-miss text-sm text-center">{error}</p>
         )}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+          className="w-full py-3 rounded-xl bg-accent hover:bg-accent-dark active:scale-[0.98] text-surface-950 font-semibold text-base transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
           {loading ? '...' : t(lang, 'validate')}
         </button>

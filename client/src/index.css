@@ -2,13 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Transitions de page (slide horizontal) ────────────────────────────── */
+/* ── Transitions de page ─────────────────────────────── */
 @keyframes slideFromRight {
-  from { opacity: 0; transform: translateX(30px); }
+  from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0);    }
 }
 @keyframes slideFromLeft {
-  from { opacity: 0; transform: translateX(-30px); }
+  from { opacity: 0; transform: translateX(-20px); }
   to   { opacity: 1; transform: translateX(0);     }
 }
 .page-slide-right {
@@ -18,47 +18,56 @@
   animation: slideFromLeft 0.2s ease-out both;
 }
 
-/* ── Fade-in (onboarding overlay) ─────────────────────────────────────── */
+/* ── Fade-in ─────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
+  from { opacity: 0; transform: scale(0.97); }
   to   { opacity: 1; transform: scale(1);    }
 }
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out both;
+  animation: fadeIn 0.25s ease-out both;
 }
 
-/* ── Apparition staggerée des cards ──────────────────────────────────────── */
+/* ── Cards stagger ───────────────────────────────────── */
 @keyframes cardIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 .card-stagger {
-  animation: cardIn 0.22s ease-out both;
+  animation: cardIn 0.2s ease-out both;
 }
 
-/* ── Animation bordure pulsée pour les cards live ────────────────────────── */
+/* ── Live ring pulse ─────────────────────────────────── */
 @keyframes pulse-ring {
-  0%, 100% { box-shadow: 0 0 0 2px rgb(59 130 246 / 0.9); }
-  50%       { box-shadow: 0 0 0 2px rgb(59 130 246 / 0.2); }
+  0%, 100% { box-shadow: 0 0 0 2px rgba(212, 162, 78, 0.8); }
+  50%      { box-shadow: 0 0 0 2px rgba(212, 162, 78, 0.15); }
 }
 .live-ring {
-  animation: pulse-ring 1.8s ease-in-out infinite;
+  animation: pulse-ring 2s ease-in-out infinite;
 }
 
-@layer base {
-  body {
-    @apply bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-white;
-    margin: 0;
-    -webkit-font-smoothing: antialiased;
-  }
+/* ── Base styles ─────────────────────────────────────── */
+body {
+  background-color: #f4f5f7;
+  color: #141827;
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  /* Masque les flèches des inputs number */
-  input[type='number']::-webkit-inner-spin-button,
-  input[type='number']::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  input[type='number'] {
-    -moz-appearance: textfield;
-  }
+html.dark body {
+  background-color: #0c0f1a;
+  color: #f0f0f5;
+}
+
+/* Masque les flèches des inputs number */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }

@@ -30,25 +30,26 @@ export default function LegalModal({ lang, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-16 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={isFr ? 'Politique de confidentialité' : 'Privacy Policy'}
     >
+      <div className="flex min-h-full items-center justify-center p-4">
       <div
         ref={dialogRef}
-        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-xl flex flex-col max-h-full overflow-hidden"
+        className="w-full max-w-lg bg-white dark:bg-surface-900 rounded-2xl shadow-xl flex flex-col max-h-[85vh] overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
-          <h2 className="font-bold text-slate-900 dark:text-white text-base">
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-surface-200 dark:border-surface-800 flex-shrink-0">
+          <h2 className="font-display font-bold text-surface-900 dark:text-white text-base">
             {isFr ? 'Politique de confidentialité' : 'Privacy Policy'}
           </h2>
           <button
             onClick={onClose}
-            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition rounded-lg w-8 h-8 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold text-sm flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 transition rounded-lg w-8 h-8 flex items-center justify-center text-surface-500 dark:text-surface-400 font-bold text-sm flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             aria-label="Fermer"
           >
             ✕
@@ -56,7 +57,7 @@ export default function LegalModal({ lang, onClose }) {
         </div>
 
         {/* Contenu scrollable */}
-        <div className="overflow-y-auto px-6 py-5 flex flex-col gap-5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex flex-col gap-5 text-sm text-surface-600 dark:text-surface-300 leading-relaxed">
 
           {isFr ? (
             <>
@@ -133,10 +134,11 @@ export default function LegalModal({ lang, onClose }) {
             </>
           )}
 
-          <p className="text-xs text-slate-400 dark:text-slate-500 text-center pt-2">
+          <p className="text-xs text-surface-400 dark:text-surface-500 text-center pt-2">
             {isFr ? 'Dernière mise à jour : mars 2026' : 'Last updated: March 2026'}
           </p>
         </div>
+      </div>
       </div>
     </div>
   )
@@ -145,7 +147,7 @@ export default function LegalModal({ lang, onClose }) {
 function Section({ title, children }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{title}</h3>
+      <h3 className="font-semibold text-surface-800 dark:text-surface-100 text-sm">{title}</h3>
       <div>{children}</div>
     </div>
   )
@@ -155,7 +157,7 @@ function Email() {
   return (
     <a
       href={`mailto:${CONTACT_EMAIL}`}
-      className="text-blue-500 hover:underline"
+      className="text-accent hover:underline"
     >
       {CONTACT_EMAIL}
     </a>

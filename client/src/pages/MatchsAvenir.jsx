@@ -37,7 +37,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
   }, [userId])
 
   if (loading) {
-    return <div className="flex justify-center py-20 text-gray-400">...</div>
+    return <div className="flex justify-center py-20 text-surface-400">...</div>
   }
 
   return (
@@ -47,7 +47,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
 
       {/* Indicateur pull-to-refresh */}
       {isPulling && (
-        <div className="flex justify-center pb-1 text-blue-400 text-lg animate-spin select-none">
+        <div className="flex justify-center pb-1 text-accent text-lg animate-spin select-none">
           ↻
         </div>
       )}
@@ -60,8 +60,8 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
       {/* Section En direct */}
       {enCours.length > 0 && (
         <>
-          <h2 className="text-base font-semibold text-red-500 mb-1 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
+          <h2 className="text-sm font-semibold text-result-miss flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-result-miss animate-pulse inline-block" />
             {t(lang, 'liveSection')}
           </h2>
           {enCours.map((match, i) => (
@@ -69,7 +69,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
               <MatchCardActive match={match} lang={lang} />
             </div>
           ))}
-          <div className="h-px bg-slate-200 dark:bg-slate-800 my-1" />
+          <div className="h-px bg-surface-200 dark:bg-surface-800 my-1" />
         </>
       )}
 
@@ -79,16 +79,16 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
         const total = aVenir.length
         return (
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base font-semibold text-gray-700 dark:text-gray-300">
+            <h2 className="font-display text-base font-bold text-surface-800 dark:text-surface-200">
               {t(lang, 'upcoming')}
             </h2>
             {total > 0 && (
               <button
                 onClick={() => setShowOnlyMissing(v => !v)}
-                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+                className={`text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent
                   ${showOnlyMissing
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+                    ? 'bg-accent text-surface-950'
+                    : 'bg-surface-200 dark:bg-surface-800 text-surface-500 dark:text-surface-400'}`}
               >
                 {t(lang, 'pronosPlaced')} {placed}/{total}
               </button>
@@ -97,7 +97,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
         )
       })()}
       {aVenir.length === 0 && (
-        <p className="text-center text-slate-400 dark:text-slate-600 py-10 text-sm">
+        <p className="text-center text-surface-400 dark:text-surface-600 py-10 text-sm">
           {t(lang, 'noUpcoming')}
         </p>
       )}
@@ -120,7 +120,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
 
         if (showOnlyMissing && filtered.length === 0) {
           return (
-            <p className="text-center text-slate-400 dark:text-slate-600 py-8 text-sm">
+            <p className="text-center text-surface-400 dark:text-surface-600 py-8 text-sm">
               {lang === 'fr' ? 'Tous les pronos sont posés !' : 'All predictions are placed!'}
             </p>
           )
@@ -135,11 +135,11 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
           }, {})
         ).sort(([a], [b]) => a.localeCompare(b)).map(([groupe, matchsGroupe]) => (
           <div key={groupe}>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-3 mb-1 pl-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-surface-400 dark:text-surface-500 mt-4 mb-2 pl-0.5">
               {t(lang, 'groupLabel')} {groupe}
             </p>
             {matchsGroupe.map((match, i) => (
-              <div key={match.id} className="card-stagger mb-3" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
+              <div key={match.id} className="card-stagger mb-2.5" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
                 <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} highlight={match.id === nextId} lastChance={lastChanceIds.has(match.id)} onPronoSaved={handlePronoSaved} />
               </div>
             ))}

@@ -13,10 +13,10 @@ function getResultat(match) {
 }
 
 const resultStyles = {
-  exact:       { bar: 'bg-green-500', badge: 'bg-green-500/10 text-green-500 border-green-500/20', icon: '🎯' },
-  bonne_issue: { bar: 'bg-blue-500',  badge: 'bg-blue-500/10  text-blue-500  border-blue-500/20',  icon: '✅' },
-  rate:        { bar: 'bg-red-500',   badge: 'bg-red-500/10   text-red-500   border-red-500/20',   icon: '❌' },
-  neutre:      { bar: 'bg-slate-600', badge: 'bg-slate-500/10 text-slate-400 border-slate-600/20', icon: '—'  },
+  exact:       { border: 'border-l-result-exact', badge: 'bg-result-exact/10 text-result-exact', icon: '🎯' },
+  bonne_issue: { border: 'border-l-accent',       badge: 'bg-accent/10 text-accent',             icon: '✅' },
+  rate:        { border: 'border-l-result-miss',   badge: 'bg-result-miss/10 text-result-miss',   icon: '❌' },
+  neutre:      { border: 'border-l-surface-600',   badge: 'bg-surface-500/10 text-surface-400',   icon: '—'  },
 }
 
 // Compteur animé 0 → valeur cible (pour les points obtenus)
@@ -72,9 +72,9 @@ function DateOrCountdown({ dateStr, lang }) {
 function TeamBlock({ fullName, lang }) {
   const { flag, name } = splitTeam(fullName, lang)
   return (
-    <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-      <span className="text-3xl leading-none">{flag}</span>
-      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate w-full text-center">
+    <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+      <span className="text-2xl leading-none">{flag}</span>
+      <span className="text-[11px] font-medium text-surface-500 dark:text-surface-400 truncate w-full text-center">
         {name}
       </span>
     </div>
@@ -91,7 +91,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
   const prevScoreRef = useRef({ a: match.score_predit_a ?? '', b: match.score_predit_b ?? '' })
   const inputBRef = useRef(null)
 
-  // Nettoyage des timers au démontage (évite setState sur composant démonté)
+  // Nettoyage des timers au démontage
   useEffect(() => {
     return () => {
       clearTimeout(debounceRef.current)
@@ -110,7 +110,6 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
       const b = isA ? autre : parsed
       if (a === '' || b === '') return
       if (!isOnline) return
-      // Optimistic : affiche "saving" immédiatement
       setSaved('saving')
       upsertProno({ user_id: userId, match_id: match.id, score_predit_a: a, score_predit_b: b })
         .then(res => {
@@ -123,7 +122,6 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
           savedTimerRef.current = setTimeout(() => setSaved(false), 700)
         })
         .catch(() => {
-          // Rollback aux dernières valeurs sauvegardées
           setScoreA(prevScoreRef.current.a)
           setScoreB(prevScoreRef.current.b)
           setSaved('error')
@@ -133,27 +131,35 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
     }, 600)
   }
 
+  const inputClasses = (state) => {
+    const base = 'w-11 h-11 rounded-lg border text-center bg-surface-50 dark:bg-surface-800 text-lg font-display font-bold text-surface-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-200'
+    if (state === 'ok') return `${base} border-result-exact`
+    if (state === 'error') return `${base} border-result-miss`
+    if (state === 'saving') return `${base} border-accent-light`
+    return `${base} border-surface-200 dark:border-surface-700 focus:border-accent`
+  }
+
   return (
-    <div className={`bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none p-4
-      ${lastChance ? 'ring-2 ring-amber-500/60 animate-pulse' : highlight ? 'ring-2 ring-blue-500/50' : 'ring-1 ring-slate-100 dark:ring-slate-800/60'}`}>
+    <div className={`bg-white dark:bg-surface-900 rounded-xl p-4 transition-shadow
+      ${lastChance ? 'ring-1 ring-gold/50' : highlight ? 'ring-1 ring-accent/30' : 'border border-surface-200 dark:border-surface-800/60'}`}>
       {/* Date + verrou + badges */}
-      <div className="flex items-center justify-center gap-2 mb-4">
+      <div className="flex items-center justify-center gap-2 mb-3">
         {lastChance && (
-          <span className="text-[10px] font-bold bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-semibold bg-gold-muted text-gold-dark dark:text-gold-light px-2 py-0.5 rounded-full">
             {t(lang, 'lastChance')}
           </span>
         )}
         {highlight && !lastChance && (
-          <span className="text-[10px] font-bold bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-semibold bg-accent/10 text-accent px-2 py-0.5 rounded-full">
             {lang === 'fr' ? 'Prochain' : 'Next'}
           </span>
         )}
-        <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tracking-wide">
+        <span className="text-[11px] font-medium text-surface-400 dark:text-surface-500 tracking-wide">
           <DateOrCountdown dateStr={match.date_coup_envoi} lang={lang} />
         </span>
         {isVerrouille && (
-          <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded-full">
-            🔒 {t(lang, 'locked')}
+          <span className="text-[10px] font-semibold text-surface-400 dark:text-surface-500 px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-800">
+            🔒
           </span>
         )}
       </div>
@@ -172,15 +178,13 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
             onChange={e => {
               const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
               handleChange(v, setScoreA, scoreB, true)
-              // Auto-focus vers input B quand on tape un chiffre
               if (v !== '') {
                 setTimeout(() => { inputBRef.current?.focus(); inputBRef.current?.select() }, 0)
               }
             }}
-            className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
-              ${saved === 'ok' ? 'border-solid border-green-400' : saved === 'error' ? 'border-solid border-red-400' : saved === 'saving' ? 'border-solid border-blue-300' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
+            className={inputClasses(saved)}
           />
-          <span className="text-slate-300 dark:text-slate-600 font-bold text-lg select-none">—</span>
+          <span className="text-surface-300 dark:text-surface-600 font-medium text-sm select-none">–</span>
           <input
             ref={inputBRef}
             type="text" inputMode="numeric" pattern="[0-9]*"
@@ -190,13 +194,11 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
             onChange={e => {
               const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
               handleChange(v, setScoreB, scoreA, false)
-              // Fermer le clavier après saisie du score B
               if (v !== '') {
                 setTimeout(() => e.target.blur(), 0)
               }
             }}
-            className={`w-12 h-12 rounded-xl border-2 text-center bg-transparent text-xl font-bold text-slate-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-300
-              ${saved === 'ok' ? 'border-solid border-green-400' : saved === 'error' ? 'border-solid border-red-400' : saved === 'saving' ? 'border-solid border-blue-300' : 'border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500'}`}
+            className={inputClasses(saved)}
           />
         </div>
 
@@ -213,14 +215,14 @@ export function MatchCardActive({ match, lang }) {
   const minute = match.minute_live
 
   return (
-    <div className="live-ring bg-slate-50 dark:bg-slate-900 rounded-2xl overflow-hidden">
+    <div className="live-ring bg-white dark:bg-surface-900 rounded-xl overflow-hidden">
       <div className="p-4">
         {/* Badge LIVE + minute */}
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-          <span className="text-[11px] font-extrabold tracking-widest text-red-500">LIVE</span>
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <span className="w-1.5 h-1.5 rounded-full bg-result-miss animate-pulse flex-shrink-0" />
+          <span className="text-[11px] font-bold tracking-widest text-result-miss">LIVE</span>
           {minute != null && (
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+            <span className="text-[11px] font-medium text-surface-400 dark:text-surface-500">
               {minute}&apos;
             </span>
           )}
@@ -233,11 +235,11 @@ export function MatchCardActive({ match, lang }) {
           <div className="flex flex-col items-center gap-2 flex-shrink-0">
             {/* Score live */}
             <div className="flex items-center gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+              <span className="text-3xl font-display font-bold text-surface-900 dark:text-white tabular-nums">
                 {scoreA}
               </span>
-              <span className="text-slate-300 dark:text-slate-600 font-bold">—</span>
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+              <span className="text-surface-300 dark:text-surface-600 font-medium text-sm">–</span>
+              <span className="text-3xl font-display font-bold text-surface-900 dark:text-white tabular-nums">
                 {scoreB}
               </span>
             </div>
@@ -245,19 +247,19 @@ export function MatchCardActive({ match, lang }) {
             {/* Prono grisé */}
             {match.prono_id ? (
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 mr-0.5">
-                  {t(lang, 'myProno')} :
+                <span className="text-[10px] font-medium text-surface-400 dark:text-surface-500 mr-0.5">
+                  {t(lang, 'myProno')}
                 </span>
-                <span className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                <span className="w-6 h-6 rounded bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-xs font-bold text-surface-400 dark:text-surface-500 tabular-nums">
                   {match.score_predit_a}
                 </span>
-                <span className="text-slate-200 dark:text-slate-700 text-xs">—</span>
-                <span className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                <span className="text-surface-300 dark:text-surface-700 text-[10px]">–</span>
+                <span className="w-6 h-6 rounded bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-xs font-bold text-surface-400 dark:text-surface-500 tabular-nums">
                   {match.score_predit_b}
                 </span>
               </div>
             ) : (
-              <span className="text-xs text-slate-400 dark:text-slate-600">{t(lang, 'noProno')}</span>
+              <span className="text-[11px] text-surface-400 dark:text-surface-600">{t(lang, 'noProno')}</span>
             )}
           </div>
 
@@ -282,7 +284,6 @@ export function MatchCardPasse({ match, lang }) {
   function handleClick(e) {
     if (resultat !== 'exact' || firedRef.current) return
     firedRef.current = true
-    // Masquer le hint après le premier tap
     if (hintVisible) {
       setHintVisible(false)
       try { localStorage.setItem('score26_confetti_seen', '1') } catch {}
@@ -296,12 +297,9 @@ export function MatchCardPasse({ match, lang }) {
 
   return (
     <div
-      className={`bg-slate-50 dark:bg-slate-900 rounded-2xl shadow-sm shadow-slate-200 dark:shadow-none ring-1 ring-slate-100 dark:ring-slate-800/60 overflow-hidden ${resultat === 'exact' ? 'cursor-pointer' : ''}`}
+      className={`bg-white dark:bg-surface-900 rounded-xl overflow-hidden border border-surface-200 dark:border-surface-800/60 border-l-[3px] ${style.border} ${resultat === 'exact' ? 'cursor-pointer' : ''}`}
       onClick={handleClick}
     >
-      {/* Barre colorée en haut selon résultat */}
-      <div className={`h-1 w-full ${style.bar}`} />
-
       <div className="p-4">
         {/* Équipes + score */}
         <div className="flex items-center gap-3">
@@ -311,11 +309,11 @@ export function MatchCardPasse({ match, lang }) {
           <div className="flex flex-col items-center gap-2 flex-shrink-0">
             {/* Score réel */}
             <div className="flex items-center gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+              <span className="text-2xl font-display font-bold text-surface-900 dark:text-white tabular-nums">
                 {match.score_reel_a}
               </span>
-              <span className="text-slate-300 dark:text-slate-600 font-bold">—</span>
-              <span className="text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">
+              <span className="text-surface-300 dark:text-surface-600 font-medium text-sm">–</span>
+              <span className="text-2xl font-display font-bold text-surface-900 dark:text-white tabular-nums">
                 {match.score_reel_b}
               </span>
             </div>
@@ -323,27 +321,27 @@ export function MatchCardPasse({ match, lang }) {
             {/* Prono grisé */}
             {match.prono_id ? (
               <div className="flex items-center gap-1.5">
-                <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                <span className="w-6 h-6 rounded bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-xs font-bold text-surface-400 dark:text-surface-500 tabular-nums">
                   {match.score_predit_a}
                 </span>
-                <span className="text-slate-200 dark:text-slate-700 text-xs">—</span>
-                <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                <span className="text-surface-300 dark:text-surface-700 text-[10px]">–</span>
+                <span className="w-6 h-6 rounded bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-xs font-bold text-surface-400 dark:text-surface-500 tabular-nums">
                   {match.score_predit_b}
                 </span>
               </div>
             ) : (
-              <span className="text-xs text-slate-400 dark:text-slate-600">{t(lang, 'noProno')}</span>
+              <span className="text-[11px] text-surface-400 dark:text-surface-600">{t(lang, 'noProno')}</span>
             )}
 
-            {/* Badge points — icône + texte pour accessibilité (pas couleur-only) */}
+            {/* Badge points */}
             {match.points_obtenus != null && (
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${style.badge}`}>
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${style.badge}`}>
                 {style.icon} +<AnimatedCount value={match.points_obtenus} /> pts
               </span>
             )}
-            {/* Hint "Tap !" la première fois sur un score exact */}
+            {/* Hint "Tap !" */}
             {hintVisible && (
-              <span className="text-[10px] text-green-500 animate-bounce">
+              <span className="text-[10px] text-result-exact animate-bounce">
                 Tap !
               </span>
             )}
