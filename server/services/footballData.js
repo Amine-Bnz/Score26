@@ -125,7 +125,7 @@ async function syncCalendrier(db) {
 // ── syncResultats ─────────────────────────────────────────────────────────────
 // Récupère les matchs terminés et met à jour les scores en base.
 // Déclenche le calcul des points automatiquement via la fonction calculerPoints.
-async function syncResultats(db, { calculerPoints }) {
+async function syncResultats(db, { calculerPoints, envoyerNotifResultat, resoudreChallenges }) {
   const data = await fetchFD('/competitions/WC/matches?season=2026&status=FINISHED');
   const matchsTermines = data.matches ?? [];
 
@@ -148,6 +148,10 @@ async function syncResultats(db, { calculerPoints }) {
     ).run(scoreA, scoreB, match.id);
 
     calculerPoints(match.id);
+    if (resoudreChallenges) resoudreChallenges(match.id);
+    if (envoyerNotifResultat) {
+      envoyerNotifResultat(db, match.id).catch(e => logger.error({ err: e }, '[sync résultats] erreur notif résultat'));
+    }
     mis_a_jour++;
     logger.info(`[sync résultats] Match ${match.id} terminé : ${scoreA}-${scoreB}`);
   }

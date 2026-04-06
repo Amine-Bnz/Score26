@@ -51,4 +51,21 @@ router.delete('/unsubscribe', (req, res) => {
   return res.json({ ok: true })
 })
 
+// PATCH /api/push/settings — met à jour le délai de rappel
+// Body : { user_id, notif_delay } (30, 60, 120, 180)
+router.patch('/settings', (req, res) => {
+  const { user_id, notif_delay } = req.body
+  if (!user_id || !notif_delay) return res.status(400).json({ error: 'user_id et notif_delay requis.' })
+  const allowed = [30, 60, 120, 180]
+  if (!allowed.includes(notif_delay)) return res.status(400).json({ error: 'Délai invalide.' })
+  db.prepare('UPDATE push_subscriptions SET notif_delay = ? WHERE user_id = ?').run(notif_delay, user_id)
+  return res.json({ ok: true })
+})
+
+// GET /api/push/settings/:userId — récupère le délai actuel
+router.get('/settings/:userId', (req, res) => {
+  const sub = db.prepare('SELECT notif_delay FROM push_subscriptions WHERE user_id = ? LIMIT 1').get(req.params.userId)
+  return res.json({ notif_delay: sub?.notif_delay ?? 60 })
+})
+
 module.exports = router

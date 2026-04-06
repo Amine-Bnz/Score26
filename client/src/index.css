@@ -45,6 +45,47 @@
   animation: pulse-ring 2s ease-in-out infinite;
 }
 
+/* ── View Transitions API (Chrome 111+) ─────────────── */
+::view-transition-old(root) {
+  animation: 150ms ease-out both vt-fade-out;
+}
+::view-transition-new(root) {
+  animation: 200ms ease-out 50ms both vt-fade-in;
+}
+
+/* Slide directionnel */
+[data-slide-dir="right"]::view-transition-old(root) {
+  animation: 150ms ease-out both vt-slide-out-left;
+}
+[data-slide-dir="right"]::view-transition-new(root) {
+  animation: 200ms ease-out 50ms both vt-slide-in-right;
+}
+[data-slide-dir="left"]::view-transition-old(root) {
+  animation: 150ms ease-out both vt-slide-out-right;
+}
+[data-slide-dir="left"]::view-transition-new(root) {
+  animation: 200ms ease-out 50ms both vt-slide-in-left;
+}
+
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+}
+@keyframes vt-slide-out-left {
+  to { opacity: 0; transform: translateX(-15px); }
+}
+@keyframes vt-slide-in-right {
+  from { opacity: 0; transform: translateX(15px); }
+}
+@keyframes vt-slide-out-right {
+  to { opacity: 0; transform: translateX(15px); }
+}
+@keyframes vt-slide-in-left {
+  from { opacity: 0; transform: translateX(-15px); }
+}
+
 /* ── Base styles ─────────────────────────────────────── */
 body {
   background-color: #f4f5f7;

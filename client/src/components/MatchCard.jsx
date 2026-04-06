@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import confetti from 'canvas-confetti'
-import { upsertProno } from '../api'
+import { upsertProno, getFriendPronos } from '../api'
 import { t, splitTeam } from '../i18n'
+import { ChevronIcon, FriendsIcon } from './Icons'
 
 // Couleur de bordure gauche selon le résultat (matchs passés)
 function getResultat(match) {
@@ -209,7 +210,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
 }
 
 // ── Card match en cours (live) ───────────────────────────────────────────────
-export function MatchCardActive({ match, lang }) {
+export function MatchCardActive({ match, lang, userId }) {
   const scoreA = match.score_live_a ?? '?'
   const scoreB = match.score_live_b ?? '?'
   const minute = match.minute_live
@@ -265,13 +266,64 @@ export function MatchCardActive({ match, lang }) {
 
           <TeamBlock fullName={match.equipe_b} lang={lang} />
         </div>
+        {userId && <FriendPronosSection matchId={match.id} userId={userId} lang={lang} />}
       </div>
     </div>
   )
 }
 
+// ── Section pronos amis (lazy-loaded, expandable) ───────────────────────────��
+function FriendPronosSection({ matchId, userId, lang }) {
+  const [open, setOpen] = useState(false)
+  const [pronos, setPronos] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  async function toggle(e) {
+    e.stopPropagation()
+    const willOpen = !open
+    setOpen(willOpen)
+    if (willOpen && !pronos && !loading) {
+      setLoading(true)
+      const data = await getFriendPronos(userId, matchId)
+      if (!data.error) setPronos(data)
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 pt-2 border-t border-surface-100 dark:border-surface-800/60">
+      <button onClick={toggle} className="flex items-center gap-1.5 w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
+        <FriendsIcon className="w-3.5 h-3.5 text-surface-400 dark:text-surface-500" />
+        <span className="text-[10px] font-medium text-surface-400 dark:text-surface-500">{t(lang, 'friendPronos')}</span>
+        <ChevronIcon className={`w-3 h-3 ml-auto text-surface-400 dark:text-surface-500 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {loading && <span className="text-[10px] text-surface-400">...</span>}
+          {pronos?.length === 0 && <span className="text-[10px] text-surface-400 dark:text-surface-500">—</span>}
+          {pronos?.map(p => (
+            <div key={p.pseudo} className="flex items-center gap-2">
+              <span className="text-[11px] text-surface-500 dark:text-surface-400 truncate flex-1">{p.pseudo}</span>
+              <span className="text-[11px] font-bold tabular-nums text-surface-600 dark:text-surface-300">
+                {p.score_predit_a} – {p.score_predit_b}
+              </span>
+              {p.points_obtenus != null && (
+                <span className={`text-[10px] font-semibold tabular-nums ${
+                  p.points_obtenus >= 50 ? 'text-result-exact' : p.points_obtenus >= 20 ? 'text-accent' : 'text-result-miss'
+                }`}>
+                  +{p.points_obtenus}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Card matchs passés ───────────────────────────────────────────────────────
-export function MatchCardPasse({ match, lang }) {
+export function MatchCardPasse({ match, lang, userId }) {
   const resultat = getResultat(match)
   const style = resultStyles[resultat]
   const firedRef = useRef(false)
@@ -349,6 +401,7 @@ export function MatchCardPasse({ match, lang }) {
 
           <TeamBlock fullName={match.equipe_b} lang={lang} />
         </div>
+        {userId && <FriendPronosSection matchId={match.id} userId={userId} lang={lang} />}
       </div>
     </div>
   )

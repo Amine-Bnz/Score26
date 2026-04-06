@@ -3,14 +3,28 @@ import { getMatchs } from '../api'
 import { MatchCardAvenir, MatchCardActive } from '../components/MatchCard'
 import { LastUpdated } from '../components/LastUpdated'
 import OnboardingTip from '../components/OnboardingTip'
+import BonusPronos from '../components/BonusPronos'
+import { ChevronIcon } from '../components/Icons'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
-import { t } from '../i18n'
+import { t, phaseLabel, PHASE_ORDER } from '../i18n'
 
 export default function MatchsAvenir({ userId, lang, isOnline = true, initialData = null }) {
   const [aVenir,  setAVenir]  = useState([])
   const [enCours, setEnCours] = useState([])
+  const [allMatchs, setAllMatchs] = useState([])
   const [loading, setLoading] = useState(true)
   const [showOnlyMissing, setShowOnlyMissing] = useState(false)
+  const [teamFilter, setTeamFilter] = useState('')
+  const [collapsedGroups, setCollapsedGroups] = useState(() => {
+    try { const s = localStorage.getItem('score26_collapsed_avenir'); return s ? JSON.parse(s) : {} } catch { return {} }
+  })
+  function toggleGroup(g) {
+    setCollapsedGroups(prev => {
+      const next = { ...prev, [g]: !prev[g] }
+      try { localStorage.setItem('score26_collapsed_avenir', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
 
   // Met à jour le state local quand un prono est sauvegardé (compteur temps réel)
   function handlePronoSaved(matchId, a, b) {
@@ -19,6 +33,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
 
   function applyData(data) {
     if (data.error || !Array.isArray(data)) { setLoading(false); return }
+    setAllMatchs(data)
     setEnCours(data.filter(m => m.statut === 'en_cours'))
     setAVenir(data.filter(m => m.score_reel_a == null && m.statut !== 'en_cours'))
     setLoading(false)
@@ -66,12 +81,34 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
           </h2>
           {enCours.map((match, i) => (
             <div key={match.id} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>
-              <MatchCardActive match={match} lang={lang} />
+              <MatchCardActive match={match} lang={lang} userId={userId} />
             </div>
           ))}
           <div className="h-px bg-surface-200 dark:bg-surface-800 my-1" />
         </>
       )}
+
+      {/* Filtre par équipe */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={teamFilter}
+          onChange={e => setTeamFilter(e.target.value)}
+          placeholder={t(lang, 'filterTeam')}
+          className="flex-1 px-3 py-2 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-900 dark:text-white text-xs placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        />
+        {teamFilter && (
+          <button
+            onClick={() => setTeamFilter('')}
+            className="text-xs text-surface-400 hover:text-accent font-medium px-2"
+          >
+            {t(lang, 'clearFilter')}
+          </button>
+        )}
+      </div>
+
+      {/* Pronos bonus */}
+      <BonusPronos userId={userId} lang={lang} matchs={allMatchs} isOnline={isOnline} />
 
       {/* Section À venir — compteur + filtre */}
       {(() => {
@@ -102,8 +139,12 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
         </p>
       )}
       {(() => {
-        // Filtre : si actif, n'affiche que les matchs sans prono
-        const filtered = showOnlyMissing ? aVenir.filter(m => m.score_predit_a == null) : aVenir
+        // Filtres : sans prono + par équipe
+        let filtered = showOnlyMissing ? aVenir.filter(m => m.score_predit_a == null) : aVenir
+        if (teamFilter.trim()) {
+          const q = teamFilter.trim().toLowerCase()
+          filtered = filtered.filter(m => m.equipe_a.toLowerCase().includes(q) || m.equipe_b.toLowerCase().includes(q))
+        }
 
         // Prochain match sans prono = le plus proche dans le temps sans score prédit
         const nextId = aVenir
@@ -128,17 +169,26 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
 
         return Object.entries(
           filtered.reduce((acc, m) => {
-            const g = m.groupe ?? '?'
+            const g = m.phase === 'groupe' ? (m.groupe ?? '?') : (m.phase ?? '?')
             if (!acc[g]) acc[g] = []
             acc[g].push(m)
             return acc
           }, {})
-        ).sort(([a], [b]) => a.localeCompare(b)).map(([groupe, matchsGroupe]) => (
+        ).sort(([a], [b]) => (PHASE_ORDER[a] ?? 99) - (PHASE_ORDER[b] ?? 99)).map(([groupe, matchsGroupe]) => (
           <div key={groupe}>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-surface-400 dark:text-surface-500 mt-4 mb-2 pl-0.5">
-              {t(lang, 'groupLabel')} {groupe}
-            </p>
-            {matchsGroupe.map((match, i) => (
+            <button
+              onClick={() => toggleGroup(groupe)}
+              className="flex items-center gap-1.5 w-full mt-4 mb-2 pl-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            >
+              <ChevronIcon className={`w-3.5 h-3.5 text-surface-400 dark:text-surface-500 transition-transform duration-200 ${collapsedGroups[groupe] ? '' : 'rotate-90'}`} />
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-surface-400 dark:text-surface-500">
+                {phaseLabel(groupe, lang)}
+              </span>
+              <span className="ml-auto text-[10px] text-surface-400 dark:text-surface-500 tabular-nums">
+                {matchsGroupe.filter(m => m.score_predit_a != null).length}/{matchsGroupe.length}
+              </span>
+            </button>
+            {!collapsedGroups[groupe] && matchsGroupe.map((match, i) => (
               <div key={match.id} className="card-stagger mb-2.5" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
                 <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} highlight={match.id === nextId} lastChance={lastChanceIds.has(match.id)} onPronoSaved={handlePronoSaved} />
               </div>

@@ -57,4 +57,31 @@ function calculerPointsBase(prono, match) {
   return 0;
 }
 
-module.exports = { calculerPoints, calculerPointsBase };
+// Résoudre les défis 1v1 pour un match donné
+function resoudreChallenges(matchId) {
+  const challenges = db.prepare(`
+    SELECT c.id, c.challenger_id, c.opponent_id
+    FROM challenges c
+    WHERE c.match_id = ? AND c.status = 'accepted'
+  `).all(matchId);
+
+  if (challenges.length === 0) return;
+
+  const update = db.prepare('UPDATE challenges SET status = ?, winner_id = ? WHERE id = ?');
+
+  db.transaction(() => {
+    for (const c of challenges) {
+      const p1 = db.prepare('SELECT points_obtenus FROM pronos WHERE user_id = ? AND match_id = ?').get(c.challenger_id, matchId);
+      const p2 = db.prepare('SELECT points_obtenus FROM pronos WHERE user_id = ? AND match_id = ?').get(c.opponent_id, matchId);
+
+      const s1 = p1?.points_obtenus ?? 0;
+      const s2 = p2?.points_obtenus ?? 0;
+
+      if (s1 > s2) update.run('resolved', c.challenger_id, c.id);
+      else if (s2 > s1) update.run('resolved', c.opponent_id, c.id);
+      else update.run('resolved', null, c.id); // égalité
+    }
+  })();
+}
+
+module.exports = { calculerPoints, calculerPointsBase, resoudreChallenges };

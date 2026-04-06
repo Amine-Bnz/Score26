@@ -67,3 +67,24 @@ export function UserIcon({ className = 'w-6 h-6' }) {
     </svg>
   )
 }
+
+// Chevron (accordéon)
+export function ChevronIcon({ className = 'w-4 h-4' }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <polyline points="9 6 15 12 9 18" />
+    </svg>
+  )
+}
+
+// Amis (deux silhouettes)
+export function FriendsIcon({ className = 'w-6 h-6' }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <circle cx="9" cy="7" r="3.5" />
+      <path d="M2 19c0-3.5 3-6 7-6s7 2.5 7 6" />
+      <circle cx="17.5" cy="8.5" r="2.5" />
+      <path d="M22 19c0-2.5-2-4.5-4.5-4.5-1 0-1.9.3-2.6.8" />
+    </svg>
+  )
+}

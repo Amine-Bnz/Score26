@@ -28,19 +28,93 @@ router.post('/', limiterCreation, (req, res) => {
   }
 
   // Vérification que le pseudo n'est pas déjà pris
-  const existing = db.prepare('SELECT id FROM users WHERE pseudo = ?').get(pseudo);
-  if (existing) {
+  const existingUser = db.prepare('SELECT id FROM users WHERE pseudo = ?').get(pseudo);
+  if (existingUser) {
     return res.status(409).json({ error: 'Ce pseudo est déjà utilisé.' });
   }
 
-  db.prepare('INSERT INTO users (id, pseudo, avatar_seed) VALUES (?, ?, ?)').run(id, pseudo, avatar_seed);
+  // Génération d'un friend_code unique
+  const existingCodes = new Set(db.prepare('SELECT friend_code FROM users WHERE friend_code IS NOT NULL').all().map(r => r.friend_code));
+  let friend_code;
+  do { friend_code = db.generateFriendCode(); } while (existingCodes.has(friend_code));
 
-  return res.status(201).json({ id, pseudo, avatar_seed });
+  db.prepare('INSERT INTO users (id, pseudo, avatar_seed, friend_code) VALUES (?, ?, ?, ?)').run(id, pseudo, avatar_seed, friend_code);
+
+  return res.status(201).json({ id, pseudo, avatar_seed, friend_code });
+});
+
+// GET /api/users/search?pseudo=xxx — recherche d'un utilisateur par pseudo
+router.get('/search', (req, res) => {
+  const { pseudo } = req.query;
+  if (!pseudo || pseudo.length < 1) {
+    return res.status(400).json({ error: 'pseudo requis.' });
+  }
+
+  const users = db.prepare(`
+    SELECT id, pseudo, avatar_seed FROM users
+    WHERE pseudo LIKE ?
+    LIMIT 10
+  `).all(`%${pseudo}%`);
+
+  return res.json(users);
+});
+
+// GET /api/users/ranking — classement global (top 100)
+router.get('/ranking', (req, res) => {
+  const ranking = db.prepare(`
+    SELECT u.id, u.pseudo, u.avatar_seed,
+      COALESCE(SUM(p.points_obtenus), 0) AS score_total,
+      COUNT(CASE WHEN p.points_obtenus = 50 THEN 1 END) AS scores_exacts,
+      COUNT(CASE WHEN p.points_obtenus = 20 THEN 1 END) AS bonnes_issues,
+      COUNT(CASE WHEN p.points_obtenus = 0  THEN 1 END) AS rates
+    FROM users u
+    LEFT JOIN pronos p ON p.user_id = u.id AND p.points_obtenus IS NOT NULL
+    GROUP BY u.id
+    ORDER BY score_total DESC
+    LIMIT 100
+  `).all();
+
+  return res.json(ranking);
+});
+
+// GET /api/users/ranking/matchday — classement par journée
+router.get('/ranking/matchday', (req, res) => {
+  const { journee } = req.query;
+
+  // Si pas de journée spécifiée, prendre la dernière journée terminée
+  let targetJournee = journee ? Number(journee) : null;
+  if (!targetJournee) {
+    const last = db.prepare("SELECT MAX(journee) AS j FROM matchs WHERE statut = 'termine'").get();
+    targetJournee = last?.j;
+    if (!targetJournee) return res.json([]);
+  }
+
+  const ranking = db.prepare(`
+    SELECT u.id, u.pseudo, u.avatar_seed,
+      COALESCE(SUM(p.points_obtenus), 0) AS score_total,
+      COUNT(CASE WHEN p.points_obtenus = 50 THEN 1 END) AS scores_exacts,
+      COUNT(CASE WHEN p.points_obtenus = 20 THEN 1 END) AS bonnes_issues,
+      COUNT(CASE WHEN p.points_obtenus = 0  THEN 1 END) AS rates
+    FROM users u
+    JOIN pronos p ON p.user_id = u.id AND p.points_obtenus IS NOT NULL
+    JOIN matchs m ON m.id = p.match_id AND m.journee = ?
+    GROUP BY u.id
+    ORDER BY score_total DESC
+    LIMIT 100
+  `).all(targetJournee);
+
+  return res.json({ journee: targetJournee, ranking });
+});
+
+// GET /api/users/ranking/matchday/list — liste des journées disponibles
+router.get('/ranking/matchday/list', (req, res) => {
+  const journees = db.prepare("SELECT DISTINCT journee FROM matchs WHERE statut = 'termine' AND journee IS NOT NULL ORDER BY journee DESC").all();
+  return res.json(journees.map(r => r.journee));
 });
 
 // GET /api/users/:id — récupération du profil + stats
 router.get('/:id', (req, res) => {
-  const user = db.prepare('SELECT id, pseudo, avatar_seed, created_at FROM users WHERE id = ?').get(req.params.id);
+  const user = db.prepare('SELECT id, pseudo, avatar_seed, friend_code, email, created_at FROM users WHERE id = ?').get(req.params.id);
 
   if (!user) {
     return res.status(404).json({ error: 'Utilisateur introuvable.' });

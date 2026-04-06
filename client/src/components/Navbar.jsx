@@ -1,10 +1,11 @@
-import { BallIcon, WhistleIcon, UserIcon } from './Icons'
+import { BallIcon, WhistleIcon, FriendsIcon, UserIcon } from './Icons'
 
 export default function Navbar({ page, onNavigate, lang }) {
   const items = [
-    { key: 'avenir', Icon: BallIcon,    labelFr: 'À venir',  labelEn: 'Upcoming' },
-    { key: 'passes', Icon: WhistleIcon, labelFr: 'Passés',   labelEn: 'Past'     },
-    { key: 'profil', Icon: UserIcon,    labelFr: 'Profil',   labelEn: 'Profile'  },
+    { key: 'avenir', Icon: BallIcon,     labelFr: 'À venir',  labelEn: 'Upcoming' },
+    { key: 'passes', Icon: WhistleIcon,  labelFr: 'Passés',   labelEn: 'Past'     },
+    { key: 'amis',   Icon: FriendsIcon,  labelFr: 'Amis',     labelEn: 'Friends'  },
+    { key: 'profil', Icon: UserIcon,     labelFr: 'Profil',   labelEn: 'Profile'  },
   ]
 
   return (

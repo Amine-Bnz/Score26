@@ -11,8 +11,8 @@ const PORT = process.env.PORT || 3000;
 const db                       = require('./database');
 const { syncResultats }           = require('./services/footballData');
 const { syncLive }                = require('./services/apiFootball');
-const { calculerPoints }          = require('./scoring');
-const { envoyerNotifAvantMatch }  = require('./services/pushNotifications');
+const { calculerPoints, resoudreChallenges } = require('./scoring');
+const { envoyerNotifAvantMatch, envoyerNotifResultat }  = require('./services/pushNotifications');
 
 // Sécurité : headers HTTP (X-Content-Type-Options, X-Frame-Options, etc.)
 app.use(helmet());
@@ -30,12 +30,40 @@ app.use(cors({ origin: corsOrigin }));
 
 app.use(express.json());
 
-app.use('/api/users',  require('./routes/users'));
-app.use('/api/matchs', require('./routes/matchs'));
-app.use('/api/pronos', require('./routes/pronos'));
-app.use('/api/sync',   require('./routes/sync'));
-app.use('/api/push',   require('./routes/push'));
-app.use('/api/admin',  require('./routes/admin'));
+// Rate limit global : 100 req/min par IP sur toutes les routes /api
+const rateLimit = require('express-rate-limit');
+app.use('/api', rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes. Réessaie dans 1 minute.' },
+}));
+
+// Rate limit strict sur les POST de mutation sociale (10 req/15min)
+const socialLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de tentatives. Réessaie dans 15 minutes.' },
+});
+app.post('/api/friends', socialLimiter);
+app.post('/api/groups', socialLimiter);
+app.post('/api/groups/join', socialLimiter);
+app.post('/api/challenges', socialLimiter);
+
+app.use('/api/auth',     require('./routes/auth'));
+app.use('/api/users',    require('./routes/users'));
+app.use('/api/matchs',   require('./routes/matchs'));
+app.use('/api/pronos',   require('./routes/pronos'));
+app.use('/api/friends',  require('./routes/friends'));
+app.use('/api/groups',      require('./routes/groups'));
+app.use('/api/challenges',  require('./routes/challenges'));
+app.use('/api/sync',        require('./routes/sync'));
+app.use('/api/push',     require('./routes/push'));
+app.use('/api/bonus',    require('./routes/bonus'));
+app.use('/api/admin',    require('./routes/admin'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
@@ -89,7 +117,7 @@ function lancerPolling() {
 
   // ── Résultats finaux (football-data.org) — toutes les 10 min ──────────────
   if (fdPret) {
-    pollWithBackoff(() => syncResultats(db, { calculerPoints }), 10 * 60 * 1000, 'auto-sync résultats');
+    pollWithBackoff(() => syncResultats(db, { calculerPoints, envoyerNotifResultat, resoudreChallenges }), 10 * 60 * 1000, 'auto-sync résultats');
     logger.info('Auto-sync résultats activé (football-data.org, toutes les 10 min)');
   } else {
     logger.warn('Auto-sync résultats désactivé — configurer FOOTBALL_DATA_KEY dans .env');

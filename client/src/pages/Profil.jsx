@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
-import { getUser, getVapidPublicKey, subscribePush, unsubscribePush } from '../api'
+import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccount, getNotifSettings, updateNotifDelay } from '../api'
 import { t } from '../i18n'
-import LegalModal from '../components/LegalModal'
 import AvatarInitials, { AvatarInitialsInline } from '../components/AvatarInitials'
 
 // Convertit la clé VAPID base64url en Uint8Array (requis par pushManager.subscribe)
@@ -21,12 +20,16 @@ function urlBase64ToUint8Array(base64String) {
 // 'denied'       — l'user a refusé (irréversible sauf reset navigateur)
 // 'subscribing'  — en cours d'abonnement
 
-export default function Profil({ userId, lang }) {
+export default function Profil({ userId, lang, friendCode }) {
   const [user, setUser]           = useState(null)
   const [loading, setLoading]     = useState(true)
   const [sharing, setSharing]     = useState(false)
   const [notifStatus, setNotifStatus] = useState('checking')
-  const [showLegal, setShowLegal] = useState(false)
+  const [showSecure, setShowSecure] = useState(false)
+  const [secureEmail, setSecureEmail] = useState('')
+  const [securePass, setSecurePass] = useState('')
+  const [secureError, setSecureError] = useState('')
+  const [secureLoading, setSecureLoading] = useState(false)
   const shareCardRef              = useRef(null)
 
   useEffect(() => {
@@ -135,6 +138,22 @@ export default function Profil({ userId, lang }) {
         <StatBlock value={stats.rates}         label={t(lang, 'missed')}       color="text-result-miss"  bg="bg-result-miss/8" />
       </div>
 
+      {/* Code ami */}
+      {friendCode && (
+        <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-accent/5 border border-accent/15">
+          <span className="text-xs font-medium text-surface-500 dark:text-surface-400">
+            {lang === 'fr' ? 'Mon code ami' : 'My friend code'}
+          </span>
+          <span className="font-display font-bold text-accent tracking-widest flex-1">{friendCode}</span>
+          <button
+            onClick={() => navigator.clipboard?.writeText(friendCode)}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent text-surface-950 active:scale-95 transition-transform"
+          >
+            {lang === 'fr' ? 'Copier' : 'Copy'}
+          </button>
+        </div>
+      )}
+
       {/* Bouton partager */}
       <button
         onClick={handleShare}
@@ -150,15 +169,80 @@ export default function Profil({ userId, lang }) {
         onDisable={handleUnsubscribePush}
       />
 
-      {/* Lien politique de confidentialité */}
+      {/* Délai de rappel personnalisable */}
+      {notifStatus === 'granted' && <NotifDelaySelector userId={userId} lang={lang} />}
+
+      {/* Sécuriser le compte (pour les comptes sans email) */}
+      {user && !user.email && (
+        <div className="w-full">
+          {!showSecure ? (
+            <button
+              onClick={() => setShowSecure(true)}
+              className="w-full py-3 rounded-xl bg-surface-100 dark:bg-surface-800 active:scale-[0.98] text-surface-600 dark:text-surface-300 font-medium text-sm transition-all"
+            >
+              {t(lang, 'secureAccount')}
+            </button>
+          ) : (
+            <div className="flex flex-col gap-2 p-4 rounded-xl bg-surface-100 dark:bg-surface-800">
+              <p className="text-xs text-surface-400 mb-1">{t(lang, 'secureAccountHint')}</p>
+              <input
+                type="email"
+                placeholder={t(lang, 'email')}
+                value={secureEmail} onChange={e => setSecureEmail(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <input
+                type="password"
+                placeholder={t(lang, 'password')}
+                value={securePass} onChange={e => setSecurePass(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              {secureError && <p className="text-result-miss text-xs">{secureError}</p>}
+              <button
+                disabled={secureLoading}
+                onClick={async () => {
+                  setSecureError('')
+                  if (!secureEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(secureEmail)) { setSecureError(t(lang, 'emailInvalid')); return }
+                  if (securePass.length < 6) { setSecureError(t(lang, 'passwordTooShort')); return }
+                  setSecureLoading(true)
+                  const res = await secureAccount({ user_id: userId, email: secureEmail, password: securePass })
+                  if (res.error) { setSecureError(res.error); setSecureLoading(false); return }
+                  if (res.token) localStorage.setItem('score26_token', res.token)
+                  setUser({ ...user, email: secureEmail })
+                  setShowSecure(false)
+                  setSecureLoading(false)
+                }}
+                className="w-full py-2.5 rounded-lg bg-accent text-surface-950 font-semibold text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {secureLoading ? '...' : t(lang, 'validate')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Déconnexion */}
       <button
-        onClick={() => setShowLegal(true)}
+        onClick={() => {
+          localStorage.removeItem('score26_user_id')
+          localStorage.removeItem('score26_pseudo')
+          localStorage.removeItem('score26_token')
+          window.location.reload()
+        }}
+        className="w-full py-3 rounded-xl bg-surface-100 dark:bg-surface-800 active:scale-[0.98] text-result-miss font-medium text-sm transition-all"
+      >
+        {t(lang, 'logout')}
+      </button>
+
+      {/* Lien politique de confidentialité */}
+      <a
+        href="/privacy.html"
+        target="_blank"
+        rel="noopener noreferrer"
         className="text-xs text-surface-400 dark:text-surface-600 hover:text-surface-600 dark:hover:text-surface-400 transition-colors pb-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
       >
         {lang === 'fr' ? 'Politique de confidentialité' : 'Privacy Policy'}
-      </button>
-
-      {showLegal && <LegalModal lang={lang} onClose={() => setShowLegal(false)} />}
+      </a>
 
       {/* Card de partage hors-écran */}
       <div ref={shareCardRef} style={{ position: 'absolute', left: '-9999px', top: 0 }}>
@@ -213,6 +297,55 @@ function StatBlock({ value, label, color, bg }) {
     <div className={`flex flex-col items-center gap-1 py-3 rounded-xl ${bg}`}>
       <span className={`font-display text-xl font-bold tabular-nums ${color}`}>{value}</span>
       <span className="text-[10px] font-medium text-surface-500 dark:text-surface-400 text-center leading-tight">{label}</span>
+    </div>
+  )
+}
+
+function NotifDelaySelector({ userId, lang }) {
+  const [delay, setDelay] = useState(60)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    getNotifSettings(userId).then(data => {
+      if (data.notif_delay) setDelay(data.notif_delay)
+      setLoaded(true)
+    }).catch(() => setLoaded(true))
+  }, [userId])
+
+  async function handleChange(val) {
+    const v = Number(val)
+    setDelay(v)
+    await updateNotifDelay({ user_id: userId, notif_delay: v })
+  }
+
+  if (!loaded) return null
+
+  const options = [
+    { value: 30, label: t(lang, 'notifDelay30') },
+    { value: 60, label: t(lang, 'notifDelay60') },
+    { value: 120, label: t(lang, 'notifDelay120') },
+    { value: 180, label: t(lang, 'notifDelay180') },
+  ]
+
+  return (
+    <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 dark:bg-surface-800">
+      <span className="text-xs font-medium text-surface-500 dark:text-surface-400 flex-shrink-0">
+        {t(lang, 'notifDelay')}
+      </span>
+      <div className="flex gap-1.5 flex-1 justify-end">
+        {options.map(o => (
+          <button
+            key={o.value}
+            onClick={() => handleChange(o.value)}
+            className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-colors
+              ${delay === o.value
+                ? 'bg-accent text-surface-950'
+                : 'bg-surface-200 dark:bg-surface-700 text-surface-500 dark:text-surface-400'}`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
