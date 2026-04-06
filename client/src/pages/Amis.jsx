@@ -1,13 +1,24 @@
 import { useEffect, useState, useRef } from 'react'
-import { getFriendRanking, addFriend, removeFriend, getGlobalRanking, getFriendHistory, getMyGroups, getGroupRanking, createGroup, joinGroup, leaveGroup, getMatchdayRanking, getMatchdayList } from '../api'
+import { getFriendRanking, addFriend, removeFriend, getGlobalRanking, getFriendHistory, compareFriend, getMyGroups, getGroupRanking, createGroup, joinGroup, leaveGroup, getMatchdayRanking, getMatchdayList } from '../api'
 import { t } from '../i18n'
 import AvatarInitials from '../components/AvatarInitials'
+import { RankingRowSkeleton } from '../components/Skeleton'
 
 export default function Amis({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   const [tab, setTab] = useState(() => {
     if (deepLink?.type === 'group') return 'groupes'
     return 'amis'
   })
+  // Tabs visitées : ne monte un onglet qu'au premier clic, puis le garde monté (pas de re-fetch)
+  const [visited, setVisited] = useState(() => {
+    const init = new Set(['amis'])
+    if (deepLink?.type === 'group') init.add('groupes')
+    return init
+  })
+  function switchTab(key) {
+    setTab(key)
+    setVisited(prev => { const n = new Set(prev); n.add(key); return n })
+  }
 
   return (
     <div className="flex flex-col gap-4 pt-2">
@@ -16,7 +27,7 @@ export default function Amis({ userId, lang, friendCode, deepLink, onDeepLinkHan
         {['amis', 'groupes', 'global'].map(key => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => switchTab(key)}
             className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all
               ${tab === key
                 ? 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
@@ -27,9 +38,20 @@ export default function Amis({ userId, lang, friendCode, deepLink, onDeepLinkHan
         ))}
       </div>
 
-      {tab === 'amis' && <AmisTab userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink?.type === 'invite' ? deepLink : null} onDeepLinkHandled={onDeepLinkHandled} />}
-      {tab === 'groupes' && <GroupesTab userId={userId} lang={lang} deepLink={deepLink?.type === 'group' ? deepLink : null} onDeepLinkHandled={onDeepLinkHandled} />}
-      {tab === 'global' && <GlobalTab userId={userId} lang={lang} />}
+      {/* Monte au premier clic, reste monte ensuite (hidden quand pas actif) */}
+      <div className={`flex flex-col gap-4 ${tab !== 'amis' ? 'hidden' : ''}`}>
+        <AmisTab userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink?.type === 'invite' ? deepLink : null} onDeepLinkHandled={onDeepLinkHandled} />
+      </div>
+      {visited.has('groupes') && (
+        <div className={`flex flex-col gap-4 ${tab !== 'groupes' ? 'hidden' : ''}`}>
+          <GroupesTab userId={userId} lang={lang} deepLink={deepLink?.type === 'group' ? deepLink : null} onDeepLinkHandled={onDeepLinkHandled} />
+        </div>
+      )}
+      {visited.has('global') && (
+        <div className={`flex flex-col gap-4 ${tab !== 'global' ? 'hidden' : ''}`}>
+          <GlobalTab userId={userId} lang={lang} />
+        </div>
+      )}
     </div>
   )
 }
@@ -63,6 +85,8 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   const [loading, setLoading] = useState(true)
   const [historyFriend, setHistoryFriend] = useState(null) // { pseudo, avatar_seed, pronos }
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [compareData, setCompareData] = useState(null)
+  const [compareLoading, setCompareLoading] = useState(false)
   const { toast, showToast } = useToast()
 
   useEffect(() => { loadRanking() }, [userId])
@@ -117,7 +141,19 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
     setHistoryLoading(false)
   }
 
-  if (loading) return <div className="flex justify-center py-20 text-surface-400">...</div>
+  async function openCompare(friendId) {
+    setCompareLoading(true)
+    const data = await compareFriend(userId, friendId)
+    if (!data.error) setCompareData(data)
+    setCompareLoading(false)
+  }
+
+  if (loading) return <div className="flex flex-col gap-2">{[0,1,2,3,4].map(i => <RankingRowSkeleton key={i} />)}</div>
+
+  // Afficher la comparaison
+  if (compareData) {
+    return <CompareView data={compareData} lang={lang} onBack={() => setCompareData(null)} />
+  }
 
   // Afficher l'historique d'un ami
   if (historyFriend) {
@@ -159,6 +195,9 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
         </div>
       )}
 
+      {/* Séparateur */}
+      <div className="h-px bg-surface-200 dark:bg-surface-800" />
+
       {/* Saisie code ami */}
       <div className="flex gap-2">
         <input
@@ -190,7 +229,7 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
       )}
 
       {ranking.length > 1 && (
-        <RankingList ranking={ranking} userId={userId} lang={lang} onRemove={handleRemove} onHistory={openHistory} />
+        <RankingList ranking={ranking} userId={userId} lang={lang} onRemove={handleRemove} onHistory={openHistory} onCompare={openCompare} />
       )}
     </>
   )
@@ -200,17 +239,40 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
 function GlobalTab({ userId, lang }) {
   const [ranking, setRanking] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [page, setPage] = useState(1)
   const [mode, setMode] = useState('global') // 'global' | 'matchday'
   const [journees, setJournees] = useState([])
   const [selectedJournee, setSelectedJournee] = useState(null)
   const [matchdayData, setMatchdayData] = useState(null)
 
   useEffect(() => {
-    getGlobalRanking()
-      .then(data => { if (!data.error) setRanking(data) })
+    getGlobalRanking(1)
+      .then(data => {
+        if (!data.error) {
+          setRanking(data.ranking ?? data)
+          setHasMore(data.hasMore ?? false)
+          setPage(1)
+        }
+      })
       .finally(() => setLoading(false))
     getMatchdayList().then(data => { if (Array.isArray(data)) setJournees(data) })
   }, [])
+
+  function loadMore() {
+    const next = page + 1
+    setLoadingMore(true)
+    getGlobalRanking(next)
+      .then(data => {
+        if (!data.error) {
+          setRanking(prev => [...prev, ...(data.ranking ?? [])])
+          setHasMore(data.hasMore ?? false)
+          setPage(next)
+        }
+      })
+      .finally(() => setLoadingMore(false))
+  }
 
   useEffect(() => {
     if (mode !== 'matchday') return
@@ -225,7 +287,7 @@ function GlobalTab({ userId, lang }) {
       .finally(() => setLoading(false))
   }, [mode, selectedJournee])
 
-  if (loading) return <div className="flex justify-center py-20 text-surface-400">...</div>
+  if (loading) return <div className="flex flex-col gap-2">{[0,1,2,3,4].map(i => <RankingRowSkeleton key={i} />)}</div>
 
   const displayRanking = mode === 'global' ? ranking : (matchdayData?.ranking ?? [])
 
@@ -270,7 +332,18 @@ function GlobalTab({ userId, lang }) {
       {displayRanking.length === 0 ? (
         <p className="text-center text-surface-400 dark:text-surface-600 py-10 text-sm">—</p>
       ) : (
-        <RankingList ranking={displayRanking} userId={userId} lang={lang} />
+        <>
+          <RankingList ranking={displayRanking} userId={userId} lang={lang} />
+          {mode === 'global' && hasMore && (
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="w-full py-2.5 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-500 dark:text-surface-400 text-xs font-semibold active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
+            >
+              {loadingMore ? '...' : (lang === 'fr' ? 'Voir plus' : 'Load more')}
+            </button>
+          )}
+        </>
       )}
     </>
   )
@@ -355,7 +428,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
     }
   }
 
-  if (loading) return <div className="flex justify-center py-20 text-surface-400">...</div>
+  if (loading) return <div className="flex flex-col gap-2">{[0,1,2,3,4].map(i => <RankingRowSkeleton key={i} />)}</div>
 
   // Vue classement d'un groupe
   if (selectedGroup) {
@@ -390,7 +463,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
         </div>
 
         {groupLoading ? (
-          <div className="flex justify-center py-10 text-surface-400">...</div>
+          <div className="flex flex-col gap-2">{[0,1,2,3].map(i => <RankingRowSkeleton key={i} />)}</div>
         ) : (
           <RankingList ranking={groupRanking} userId={userId} lang={lang} />
         )}
@@ -474,7 +547,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
               onClick={() => openGroupRanking(g)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 dark:bg-surface-800/60 active:scale-[0.98] transition-transform text-left"
             >
-              <span className="text-lg">👥</span>
+              <span className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">{g.member_count}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-surface-900 dark:text-white truncate">{g.name}</p>
                 <p className="text-[10px] text-surface-400">{g.member_count} {t(lang, 'members')}</p>
@@ -491,7 +564,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
 }
 
 // ── Composant Ranking partagé ─────────────────────────────────────────────────
-function RankingList({ ranking, userId, lang, onRemove, onHistory }) {
+function RankingList({ ranking, userId, lang, onRemove, onHistory, onCompare }) {
   return (
     <div className="flex flex-col gap-2">
       {ranking.map((user, i) => {
@@ -505,8 +578,8 @@ function RankingList({ ranking, userId, lang, onRemove, onHistory }) {
           >
             {/* Rang */}
             <span className={`w-7 text-center font-display font-bold text-sm tabular-nums
-              ${rank === 1 ? 'text-accent' : 'text-surface-400 dark:text-surface-500'}`}>
-              {rank <= 3 ? ['🥇','🥈','🥉'][rank - 1] : `#${rank}`}
+              ${rank <= 3 ? 'text-accent' : 'text-surface-400 dark:text-surface-500'}`}>
+              #{rank}
             </span>
 
             {/* Avatar + pseudo */}
@@ -526,6 +599,20 @@ function RankingList({ ranking, userId, lang, onRemove, onHistory }) {
             </span>
 
             {/* Actions (amis seulement) */}
+            {!isMe && onCompare && (
+              <button
+                onClick={() => onCompare(user.id)}
+                className="text-surface-400 hover:text-accent transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                aria-label={t(lang, 'compare')}
+                title={t(lang, 'compare')}
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="18 8 22 12 18 16" />
+                  <polyline points="6 8 2 12 6 16" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                </svg>
+              </button>
+            )}
             {!isMe && onHistory && (
               <button
                 onClick={() => onHistory(user.id)}
@@ -553,6 +640,83 @@ function RankingList({ ranking, userId, lang, onRemove, onHistory }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ── Vue comparaison face-à-face ──────────────────────────────────────────────
+function CompareView({ data, lang, onBack }) {
+  const { me, friend, summary, matches } = data
+
+  return (
+    <div className="flex flex-col gap-4">
+      <button onClick={onBack} className="text-xs text-accent font-semibold">
+        &larr; {t(lang, 'back')}
+      </button>
+
+      <h2 className="font-display text-base font-bold text-surface-800 dark:text-surface-200 text-center">
+        {t(lang, 'compareTitle')}
+      </h2>
+
+      {/* Résumé */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-accent/10 rounded-xl py-3">
+          <p className="font-display text-lg font-bold text-accent">{summary.myWins}</p>
+          <p className="text-[10px] text-surface-400 truncate px-1">{me.pseudo}</p>
+        </div>
+        <div className="bg-surface-100 dark:bg-surface-800 rounded-xl py-3">
+          <p className="font-display text-lg font-bold text-surface-500">{summary.ties}</p>
+          <p className="text-[10px] text-surface-400">{t(lang, 'compareTies')}</p>
+        </div>
+        <div className="bg-result-miss/10 rounded-xl py-3">
+          <p className="font-display text-lg font-bold text-result-miss">{summary.frWins}</p>
+          <p className="text-[10px] text-surface-400 truncate px-1">{friend.pseudo}</p>
+        </div>
+      </div>
+
+      {/* Score total */}
+      <div className="flex items-center justify-between px-4 py-2 rounded-xl bg-surface-100 dark:bg-surface-800">
+        <span className="font-display font-bold text-accent tabular-nums">{summary.myTotal} pt</span>
+        <span className="text-[10px] text-surface-400">{t(lang, 'totalScore')}</span>
+        <span className="font-display font-bold text-result-miss tabular-nums">{summary.frTotal} pt</span>
+      </div>
+
+      {/* Matchs */}
+      {matches.length === 0 ? (
+        <p className="text-center text-surface-400 py-10 text-sm">{t(lang, 'noHistory')}</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {matches.map(m => {
+            const myBetter = m.my_pts > m.fr_pts
+            const frBetter = m.fr_pts > m.my_pts
+            return (
+              <div key={m.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface-100 dark:bg-surface-800/60">
+                {/* Mon prono */}
+                <div className={`flex items-center gap-1 flex-1 justify-start ${myBetter ? 'text-accent' : 'text-surface-500'}`}>
+                  <span className="text-xs font-bold tabular-nums">{m.my_a}-{m.my_b}</span>
+                  <span className="text-[10px] font-semibold tabular-nums">+{m.my_pts}</span>
+                </div>
+
+                {/* Match info */}
+                <div className="flex flex-col items-center flex-shrink-0 min-w-0">
+                  <p className="text-[10px] text-surface-400 dark:text-surface-500 truncate max-w-[120px] text-center">
+                    {m.equipe_a.split(' ').slice(1).join(' ')} - {m.equipe_b.split(' ').slice(1).join(' ')}
+                  </p>
+                  <p className="text-[10px] font-bold text-surface-600 dark:text-surface-300 tabular-nums">
+                    {m.score_reel_a}-{m.score_reel_b}
+                  </p>
+                </div>
+
+                {/* Son prono */}
+                <div className={`flex items-center gap-1 flex-1 justify-end ${frBetter ? 'text-result-miss' : 'text-surface-500'}`}>
+                  <span className="text-[10px] font-semibold tabular-nums">+{m.fr_pts}</span>
+                  <span className="text-xs font-bold tabular-nums">{m.fr_a}-{m.fr_b}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

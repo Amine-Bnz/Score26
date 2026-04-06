@@ -5,6 +5,7 @@ import { LastUpdated } from '../components/LastUpdated'
 import { ChevronIcon } from '../components/Icons'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { t, phaseLabel, PHASE_ORDER } from '../i18n'
+import { MatchCardSkeleton } from '../components/Skeleton'
 
 export default function MatchsPasses({ userId, lang, initialData = null }) {
   const [matchs, setMatchs] = useState([])
@@ -40,7 +41,11 @@ export default function MatchsPasses({ userId, lang, initialData = null }) {
   }, [userId])
 
   if (loading) {
-    return <div className="flex justify-center py-20 text-surface-400">...</div>
+    return (
+      <div className="flex flex-col gap-3">
+        {[0, 1, 2, 3].map(i => <MatchCardSkeleton key={i} />)}
+      </div>
+    )
   }
 
   return (

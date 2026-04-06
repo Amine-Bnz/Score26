@@ -3,7 +3,7 @@ const db = require('./database');
 // Calcule et persiste les points_obtenus pour tous les pronos d'un match
 // Appelé après la saisie du score réel
 function calculerPoints(matchId) {
-  const match = db.prepare('SELECT score_reel_a, score_reel_b FROM matchs WHERE id = ?').get(matchId);
+  const match = db.prepare('SELECT score_reel_a, score_reel_b, is_featured FROM matchs WHERE id = ?').get(matchId);
   if (!match || match.score_reel_a == null || match.score_reel_b == null) return;
 
   const pronos = db.prepare('SELECT * FROM pronos WHERE match_id = ?').all(matchId);
@@ -31,7 +31,8 @@ function calculerPoints(matchId) {
       const ratio = nbMemeProno / totalPronos;
       const cote = Math.min(1 / ratio, 5);
 
-      const pointsFinaux = Math.round(pointsBase * cote);
+      const multiplier = match.is_featured ? 2 : 1;
+      const pointsFinaux = Math.round(pointsBase * cote * multiplier);
 
       db.prepare('UPDATE pronos SET points_obtenus = ?, verrouille = 1 WHERE id = ?')
         .run(pointsFinaux, prono.id);

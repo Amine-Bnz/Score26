@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import confetti from 'canvas-confetti'
 import { upsertProno, getFriendPronos } from '../api'
+import { queueProno } from '../hooks/useOfflineSync'
 import { t, splitTeam } from '../i18n'
 import { ChevronIcon, FriendsIcon } from './Icons'
 
@@ -14,10 +15,10 @@ function getResultat(match) {
 }
 
 const resultStyles = {
-  exact:       { border: 'border-l-result-exact', badge: 'bg-result-exact/10 text-result-exact', icon: '🎯' },
-  bonne_issue: { border: 'border-l-accent',       badge: 'bg-accent/10 text-accent',             icon: '✅' },
-  rate:        { border: 'border-l-result-miss',   badge: 'bg-result-miss/10 text-result-miss',   icon: '❌' },
-  neutre:      { border: 'border-l-surface-600',   badge: 'bg-surface-500/10 text-surface-400',   icon: '—'  },
+  exact:       { border: 'border-l-result-exact', badge: 'bg-result-exact/10 text-result-exact', dot: 'bg-result-exact' },
+  bonne_issue: { border: 'border-l-accent',       badge: 'bg-accent/10 text-accent',             dot: 'bg-accent' },
+  rate:        { border: 'border-l-result-miss',   badge: 'bg-result-miss/10 text-result-miss',   dot: 'bg-result-miss' },
+  neutre:      { border: 'border-l-surface-600',   badge: 'bg-surface-500/10 text-surface-400',   dot: 'bg-surface-400' },
 }
 
 // Compteur animé 0 → valeur cible (pour les points obtenus)
@@ -110,9 +111,20 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
       const a = isA ? parsed : autre
       const b = isA ? autre : parsed
       if (a === '' || b === '') return
-      if (!isOnline) return
+      const pronoData = { user_id: userId, match_id: match.id, score_predit_a: a, score_predit_b: b }
+      if (!isOnline) {
+        // Sauvegarder en file offline
+        queueProno(pronoData)
+        navigator.vibrate?.(10)
+        prevScoreRef.current = { a, b }
+        onPronoSaved?.(match.id, a, b)
+        setSaved('queued')
+        clearTimeout(savedTimerRef.current)
+        savedTimerRef.current = setTimeout(() => setSaved(false), 1200)
+        return
+      }
       setSaved('saving')
-      upsertProno({ user_id: userId, match_id: match.id, score_predit_a: a, score_predit_b: b })
+      upsertProno(pronoData)
         .then(res => {
           if (res.error) throw new Error(res.error)
           navigator.vibrate?.(10)
@@ -123,11 +135,13 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
           savedTimerRef.current = setTimeout(() => setSaved(false), 700)
         })
         .catch(() => {
-          setScoreA(prevScoreRef.current.a)
-          setScoreB(prevScoreRef.current.b)
-          setSaved('error')
+          // Réseau coupé en cours de requête → queue offline
+          queueProno(pronoData)
+          prevScoreRef.current = { a, b }
+          onPronoSaved?.(match.id, a, b)
+          setSaved('queued')
           clearTimeout(savedTimerRef.current)
-          savedTimerRef.current = setTimeout(() => setSaved(false), 1500)
+          savedTimerRef.current = setTimeout(() => setSaved(false), 1200)
         })
     }, 600)
   }
@@ -135,6 +149,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
   const inputClasses = (state) => {
     const base = 'w-11 h-11 rounded-lg border text-center bg-surface-50 dark:bg-surface-800 text-lg font-display font-bold text-surface-800 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-25 disabled:cursor-not-allowed transition-colors duration-200'
     if (state === 'ok') return `${base} border-result-exact`
+    if (state === 'queued') return `${base} border-gold`
     if (state === 'error') return `${base} border-result-miss`
     if (state === 'saving') return `${base} border-accent-light`
     return `${base} border-surface-200 dark:border-surface-700 focus:border-accent`
@@ -145,6 +160,11 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
       ${lastChance ? 'ring-1 ring-gold/50' : highlight ? 'ring-1 ring-accent/30' : 'border border-surface-200 dark:border-surface-800/60'}`}>
       {/* Date + verrou + badges */}
       <div className="flex items-center justify-center gap-2 mb-3">
+        {match.is_featured === 1 && (
+          <span className="text-[10px] font-bold bg-accent/15 text-accent px-2 py-0.5 rounded-full">
+            {t(lang, 'matchOfDayShort')}
+          </span>
+        )}
         {lastChance && (
           <span className="text-[10px] font-semibold bg-gold-muted text-gold-dark dark:text-gold-light px-2 py-0.5 rounded-full">
             {t(lang, 'lastChance')}
@@ -160,7 +180,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
         </span>
         {isVerrouille && (
           <span className="text-[10px] font-semibold text-surface-400 dark:text-surface-500 px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-800">
-            🔒
+            {t(lang, 'locked')}
           </span>
         )}
       </div>
@@ -353,6 +373,14 @@ export function MatchCardPasse({ match, lang, userId }) {
       onClick={handleClick}
     >
       <div className="p-4">
+        {/* Badge match du jour */}
+        {match.is_featured === 1 && (
+          <div className="flex justify-center mb-2">
+            <span className="text-[10px] font-bold bg-accent/15 text-accent px-2 py-0.5 rounded-full">
+              {t(lang, 'matchOfDayShort')}
+            </span>
+          </div>
+        )}
         {/* Équipes + score */}
         <div className="flex items-center gap-3">
           <TeamBlock fullName={match.equipe_a} lang={lang} />
@@ -387,8 +415,9 @@ export function MatchCardPasse({ match, lang, userId }) {
 
             {/* Badge points */}
             {match.points_obtenus != null && (
-              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${style.badge}`}>
-                {style.icon} +<AnimatedCount value={match.points_obtenus} /> pts
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${style.badge} flex items-center gap-1`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${style.dot} inline-block`} />
+                +<AnimatedCount value={match.points_obtenus} /> pts
               </span>
             )}
             {/* Hint "Tap !" */}

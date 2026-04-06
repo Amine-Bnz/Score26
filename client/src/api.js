@@ -140,6 +140,11 @@ export async function getFriendHistory(userId, friendId) {
   return handleResponse(res)
 }
 
+export async function compareFriend(userId, friendId) {
+  const res = await fetch(`${BASE}/friends/${userId}/compare/${friendId}`)
+  return handleResponse(res)
+}
+
 export async function removeFriend({ user_id, friendId }) {
   const res = await fetch(`${BASE}/friends/${friendId}`, {
     method: 'DELETE',
@@ -151,8 +156,8 @@ export async function removeFriend({ user_id, friendId }) {
 
 // ── Classement global ─────────────────────────────────────────────────────────
 
-export async function getGlobalRanking() {
-  const res = await fetch(`${BASE}/users/ranking`)
+export async function getGlobalRanking(page = 1, limit = 50) {
+  const res = await fetch(`${BASE}/users/ranking?page=${page}&limit=${limit}`)
   return handleResponse(res)
 }
 

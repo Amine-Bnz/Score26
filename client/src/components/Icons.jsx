@@ -77,6 +77,17 @@ export function ChevronIcon({ className = 'w-4 h-4' }) {
   )
 }
 
+// Info (cercle + i)
+export function InfoIcon({ className = 'w-5 h-5' }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  )
+}
+
 // Amis (deux silhouettes)
 export function FriendsIcon({ className = 'w-6 h-6' }) {
   return (

@@ -92,6 +92,48 @@ router.get('/:userId/history/:friendId', (req, res) => {
   return res.json({ pseudo: friend.pseudo, avatar_seed: friend.avatar_seed, pronos });
 });
 
+// GET /api/friends/:userId/compare/:friendId — comparaison face-à-face
+router.get('/:userId/compare/:friendId', (req, res) => {
+  const { userId, friendId } = req.params;
+
+  const isFriend = db.prepare('SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?').get(userId, friendId);
+  if (!isFriend) {
+    return res.status(403).json({ error: 'Cet utilisateur n\'est pas dans tes amis.' });
+  }
+
+  const friend = db.prepare('SELECT pseudo, avatar_seed FROM users WHERE id = ?').get(friendId);
+  if (!friend) return res.status(404).json({ error: 'Utilisateur introuvable.' });
+
+  const me = db.prepare('SELECT pseudo FROM users WHERE id = ?').get(userId);
+
+  const rows = db.prepare(`
+    SELECT m.id, m.equipe_a, m.equipe_b, m.score_reel_a, m.score_reel_b, m.phase, m.groupe, m.date_coup_envoi,
+           p1.score_predit_a AS my_a, p1.score_predit_b AS my_b, p1.points_obtenus AS my_pts,
+           p2.score_predit_a AS fr_a, p2.score_predit_b AS fr_b, p2.points_obtenus AS fr_pts
+    FROM matchs m
+    JOIN pronos p1 ON p1.match_id = m.id AND p1.user_id = ?
+    JOIN pronos p2 ON p2.match_id = m.id AND p2.user_id = ?
+    WHERE m.statut = 'termine' AND p1.points_obtenus IS NOT NULL AND p2.points_obtenus IS NOT NULL
+    ORDER BY m.date_coup_envoi DESC
+  `).all(userId, friendId);
+
+  let myWins = 0, frWins = 0, ties = 0, myTotal = 0, frTotal = 0;
+  for (const r of rows) {
+    myTotal += r.my_pts;
+    frTotal += r.fr_pts;
+    if (r.my_pts > r.fr_pts) myWins++;
+    else if (r.fr_pts > r.my_pts) frWins++;
+    else ties++;
+  }
+
+  return res.json({
+    me: { pseudo: me?.pseudo },
+    friend: { pseudo: friend.pseudo, avatar_seed: friend.avatar_seed },
+    summary: { myWins, frWins, ties, myTotal, frTotal },
+    matches: rows,
+  });
+});
+
 // POST /api/friends — ajouter un ami par code (bidirectionnel)
 router.post('/', (req, res) => {
   const { user_id, friend_code } = req.body;

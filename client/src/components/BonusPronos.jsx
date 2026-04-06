@@ -13,15 +13,25 @@ function teamsByGroup(matchs) {
     groups[m.groupe].add(m.equipe_b)
   }
   const sorted = {}
-  for (const g of Object.keys(groups).sort()) sorted[g] = [...groups[g]].sort()
+  for (const g of Object.keys(groups).sort()) {
+    sorted[g] = [...groups[g]].sort((a, b) => {
+      const nameA = a.indexOf(' ') >= 0 ? a.slice(a.indexOf(' ') + 1) : a
+      const nameB = b.indexOf(' ') >= 0 ? b.slice(b.indexOf(' ') + 1) : b
+      return nameA.localeCompare(nameB)
+    })
+  }
   return sorted
 }
 
-// Toutes les équipes (pour winner)
+// Toutes les équipes (pour winner) — tri alphabétique par nom (sans le drapeau)
 function allTeams(matchs) {
   const s = new Set()
   for (const m of matchs) { s.add(m.equipe_a); s.add(m.equipe_b) }
-  return [...s].sort()
+  return [...s].sort((a, b) => {
+    const nameA = a.indexOf(' ') >= 0 ? a.slice(a.indexOf(' ') + 1) : a
+    const nameB = b.indexOf(' ') >= 0 ? b.slice(b.indexOf(' ') + 1) : b
+    return nameA.localeCompare(nameB)
+  })
 }
 
 export default function BonusPronos({ userId, lang, matchs = [], isOnline = true }) {

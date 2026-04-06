@@ -82,6 +82,8 @@ const migrations = [
   "ALTER TABLE users ADD COLUMN password_hash TEXT",
   // v4 notif delay
   "ALTER TABLE push_subscriptions ADD COLUMN notif_delay INTEGER DEFAULT 60",
+  // v5 match du jour
+  "ALTER TABLE matchs ADD COLUMN is_featured INTEGER NOT NULL DEFAULT 0",
 ];
 for (const sql of migrations) {
   try { db.exec(sql) } catch (_) { /* colonne déjà présente */ }

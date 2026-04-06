@@ -59,8 +59,14 @@ router.get('/search', (req, res) => {
   return res.json(users);
 });
 
-// GET /api/users/ranking — classement global (top 100)
+// GET /api/users/ranking — classement global paginé (?page=1&limit=50)
 router.get('/ranking', (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+  const offset = (page - 1) * limit;
+
+  const total = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
+
   const ranking = db.prepare(`
     SELECT u.id, u.pseudo, u.avatar_seed,
       COALESCE(SUM(p.points_obtenus), 0) AS score_total,
@@ -71,10 +77,10 @@ router.get('/ranking', (req, res) => {
     LEFT JOIN pronos p ON p.user_id = u.id AND p.points_obtenus IS NOT NULL
     GROUP BY u.id
     ORDER BY score_total DESC
-    LIMIT 100
-  `).all();
+    LIMIT ? OFFSET ?
+  `).all(limit, offset);
 
-  return res.json(ranking);
+  return res.json({ ranking, page, limit, total, hasMore: offset + ranking.length < total });
 });
 
 // GET /api/users/ranking/matchday — classement par journée

@@ -22,6 +22,7 @@ router.get('/', (req, res) => {
       m.score_live_a,
       m.score_live_b,
       m.minute_live,
+      m.is_featured,
       p.id             AS prono_id,
       p.score_predit_a,
       p.score_predit_b,

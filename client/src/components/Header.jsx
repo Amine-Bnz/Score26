@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { SunIcon, MoonIcon } from './Icons'
+import { SunIcon, MoonIcon, InfoIcon } from './Icons'
 
 // Focus trap : piège le Tab dans la modale et ferme sur Escape
 function useFocusTrap(ref, onClose) {
@@ -65,9 +65,9 @@ function AboutModal({ lang, onClose }) {
           <p className="text-[10px] font-bold uppercase tracking-widest text-surface-400 dark:text-surface-500 mb-1">
             {isFr ? 'Règles du scoring' : 'Scoring rules'}
           </p>
-          <ScoreLine emoji="🎯" label={isFr ? 'Score exact' : 'Exact score'} pts="50 pts" color="text-result-exact" />
-          <ScoreLine emoji="✅" label={isFr ? 'Bonne issue' : 'Correct outcome'} pts="20 pts" color="text-accent" />
-          <ScoreLine emoji="❌" label={isFr ? 'Mauvaise issue' : 'Wrong outcome'} pts="0 pt" color="text-result-miss" />
+          <ScoreLine dotColor="bg-result-exact" label={isFr ? 'Score exact' : 'Exact score'} pts="50 pts" color="text-result-exact" />
+          <ScoreLine dotColor="bg-accent" label={isFr ? 'Bonne issue' : 'Correct outcome'} pts="20 pts" color="text-accent" />
+          <ScoreLine dotColor="bg-result-miss" label={isFr ? 'Mauvaise issue' : 'Wrong outcome'} pts="0 pt" color="text-result-miss" />
         </div>
 
         {/* Cote cachée */}
@@ -81,18 +81,18 @@ function AboutModal({ lang, onClose }) {
   )
 }
 
-function ScoreLine({ emoji, label, pts, color }) {
+function ScoreLine({ dotColor, label, pts, color }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-surface-600 dark:text-surface-300 flex items-center gap-2">
-        <span>{emoji}</span> {label}
+        <span className={`w-2.5 h-2.5 rounded-full ${dotColor} flex-shrink-0`} /> {label}
       </span>
       <span className={`text-sm font-bold tabular-nums ${color}`}>{pts}</span>
     </div>
   )
 }
 
-export default function Header({ lang, onLangToggle, theme, onThemeToggle }) {
+export default function Header({ lang, onLangToggle, theme, onThemeToggle, pendingCount = 0, synced = false }) {
   const [showAbout, setShowAbout] = useState(false)
 
   return (
@@ -108,8 +108,14 @@ export default function Header({ lang, onLangToggle, theme, onThemeToggle }) {
         </button>
 
         {/* Logo */}
-        <span className="font-display text-lg font-bold tracking-tight text-surface-900 dark:text-white">
+        <span className="font-display text-lg font-bold tracking-tight text-surface-900 dark:text-white relative">
           score<span className="text-gold">26</span>
+          {pendingCount > 0 && (
+            <span className="absolute -top-1 -right-4 w-2 h-2 rounded-full bg-gold animate-pulse" title={`${pendingCount} pending`} />
+          )}
+          {synced && (
+            <span className="absolute -top-1 -right-4 w-2 h-2 rounded-full bg-result-exact" />
+          )}
         </span>
 
         {/* Actions droite : info + thème */}
@@ -119,7 +125,7 @@ export default function Header({ lang, onLangToggle, theme, onThemeToggle }) {
             className="text-surface-400 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors w-8 h-8 rounded-lg flex items-center justify-center text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             aria-label="À propos"
           >
-            ℹ️
+            <InfoIcon className="w-4 h-4" />
           </button>
           <button
             onClick={() => { navigator.vibrate?.(10); onThemeToggle() }}

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import html2canvas from 'html2canvas'
+import { useEffect, useState } from 'react'
 import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccount, getNotifSettings, updateNotifDelay } from '../api'
 import { t } from '../i18n'
-import AvatarInitials, { AvatarInitialsInline } from '../components/AvatarInitials'
+import AvatarInitials from '../components/AvatarInitials'
+import { ProfileSkeleton } from '../components/Skeleton'
 
 // Convertit la clé VAPID base64url en Uint8Array (requis par pushManager.subscribe)
 function urlBase64ToUint8Array(base64String) {
@@ -20,17 +20,15 @@ function urlBase64ToUint8Array(base64String) {
 // 'denied'       — l'user a refusé (irréversible sauf reset navigateur)
 // 'subscribing'  — en cours d'abonnement
 
-export default function Profil({ userId, lang, friendCode }) {
+export default function Profil({ userId, lang, friendCode, theme, onThemeToggle }) {
   const [user, setUser]           = useState(null)
   const [loading, setLoading]     = useState(true)
-  const [sharing, setSharing]     = useState(false)
   const [notifStatus, setNotifStatus] = useState('checking')
   const [showSecure, setShowSecure] = useState(false)
   const [secureEmail, setSecureEmail] = useState('')
   const [securePass, setSecurePass] = useState('')
   const [secureError, setSecureError] = useState('')
   const [secureLoading, setSecureLoading] = useState(false)
-  const shareCardRef              = useRef(null)
 
   useEffect(() => {
     getUser(userId)
@@ -94,25 +92,7 @@ export default function Profil({ userId, lang, friendCode }) {
     }
   }
 
-  async function handleShare() {
-    if (!shareCardRef.current || sharing) return
-    setSharing(true)
-    try {
-      const canvas = await html2canvas(shareCardRef.current, {
-        backgroundColor: null, useCORS: true, scale: 2,
-      })
-      const link = document.createElement('a')
-      link.download = `score26-${user.pseudo}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-    } catch (err) {
-      console.error('[share]', err)
-    } finally {
-      setSharing(false)
-    }
-  }
-
-  if (loading) return <div className="flex justify-center py-20 text-surface-400">...</div>
+  if (loading) return <ProfileSkeleton />
   if (!user)   return <div className="flex justify-center py-20 text-surface-400">—</div>
 
   const stats = user.stats ?? { scores_exacts: 0, bonnes_issues: 0, rates: 0, score_total: 0 }
@@ -154,14 +134,26 @@ export default function Profil({ userId, lang, friendCode }) {
         </div>
       )}
 
-      {/* Bouton partager */}
-      <button
-        onClick={handleShare}
-        disabled={sharing}
-        className="w-full py-3 rounded-xl bg-accent hover:bg-accent-dark active:scale-[0.98] text-surface-950 font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-      >
-        {sharing ? '...' : t(lang, 'share')}
-      </button>
+      {/* Sélecteur de thème */}
+      <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 dark:bg-surface-800">
+        <span className="text-xs font-medium text-surface-500 dark:text-surface-400 flex-shrink-0">
+          {t(lang, 'themeLabel')}
+        </span>
+        <div className="flex gap-1.5 flex-1 justify-end">
+          {['light', 'dark'].map(v => (
+            <button
+              key={v}
+              onClick={theme !== v ? onThemeToggle : undefined}
+              className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-colors
+                ${theme === v
+                  ? 'bg-accent text-surface-950'
+                  : 'bg-surface-200 dark:bg-surface-700 text-surface-500 dark:text-surface-400'}`}
+            >
+              {t(lang, v === 'light' ? 'themeLight' : 'themeDark')}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Bouton notifications push */}
       <NotifButton status={notifStatus} lang={lang}
@@ -244,10 +236,6 @@ export default function Profil({ userId, lang, friendCode }) {
         {lang === 'fr' ? 'Politique de confidentialité' : 'Privacy Policy'}
       </a>
 
-      {/* Card de partage hors-écran */}
-      <div ref={shareCardRef} style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-        <ShareCard user={user} stats={stats} lang={lang} />
-      </div>
     </div>
   )
 }
@@ -260,7 +248,7 @@ function NotifButton({ status, lang, onEnable, onDisable }) {
     return (
       <div className="w-full rounded-xl bg-gold-muted border border-gold/20 p-4 flex flex-col gap-1.5">
         <p className="text-sm font-semibold text-gold-dark dark:text-gold-light">
-          🔕 {t(lang, 'notifsBlocked')}
+          {t(lang, 'notifsBlocked')}
         </p>
         <p className="text-xs text-gold-dark/70 dark:text-gold-light/60 leading-relaxed">
           {t(lang, 'notifsBlockedHint')}
@@ -350,27 +338,3 @@ function NotifDelaySelector({ userId, lang }) {
   )
 }
 
-function ShareCard({ user, stats, lang }) {
-  return (
-    <div style={{ width: 360, background: '#0c0f1a', borderRadius: 20, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, fontFamily: '"Space Grotesk", Inter, system-ui, sans-serif', color: '#f0f0f5' }}>
-      <p style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>
-        score<span style={{ color: '#d4a24e' }}>26</span>
-      </p>
-      <AvatarInitialsInline pseudo={user.pseudo} size={80} />
-      <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{user.pseudo}</p>
-      <p style={{ fontSize: 36, fontWeight: 700, color: '#d4a24e', margin: 0 }}>{stats.score_total}</p>
-      <div style={{ width: '100%', background: '#141827', borderRadius: 12, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[
-          { n: stats.scores_exacts, label: t(lang, 'exactScores'),  color: '#34c770' },
-          { n: stats.bonnes_issues, label: t(lang, 'goodOutcomes'), color: '#d4a24e' },
-          { n: stats.rates,         label: t(lang, 'missed'),       color: '#e8564a' },
-        ].map(({ n, label, color }) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: '#7a82a0' }}>{label}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color }}>{n}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}

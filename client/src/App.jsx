@@ -9,6 +9,7 @@ import MatchsPasses from './pages/MatchsPasses'
 import Profil from './pages/Profil'
 import Amis from './pages/Amis'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { useOfflineSync } from './hooks/useOfflineSync'
 import { getMatchs, getUser } from './api'
 
 // Lecture localStorage sécurisée (navigation privée Safari peut throw)
@@ -51,6 +52,7 @@ export default function App() {
   const [theme,  setTheme]  = useState(() => lsGet('score26_theme', 'dark'))
   const [lang,   setLang]   = useState(() => lsGet('score26_lang', 'fr'))
   const isOnline = useOnlineStatus()
+  const { pendingCount, synced } = useOfflineSync(userId, isOnline)
   const [prefetchedMatchs, setPrefetchedMatchs] = useState(null)
   const [friendCode, setFriendCode] = useState(null)
   const [deepLink, setDeepLink] = useState(null) // { type: 'invite'|'group', code: '...' }
@@ -110,13 +112,15 @@ export default function App() {
         onLangToggle={() => setLang(l => l === 'fr' ? 'en' : 'fr')}
         theme={theme}
         onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+        pendingCount={pendingCount}
+        synced={synced}
       />
 
       <main className="pb-20 px-4 pt-3 overflow-hidden">
         {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} initialData={prefetchedMatchs} /></div>}
         {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} initialData={prefetchedMatchs} /></div>}
         {page === 'amis'   && <div key="amis"   className={`page-slide-${slideDir}`}><Amis         userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink} onDeepLinkHandled={() => setDeepLink(null)} /></div>}
-        {page === 'profil' && <div key="profil" className={`page-slide-${slideDir}`}><Profil       userId={userId} lang={lang} friendCode={friendCode} /></div>}
+        {page === 'profil' && <div key="profil" className={`page-slide-${slideDir}`}><Profil       userId={userId} lang={lang} friendCode={friendCode} theme={theme} onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} /></div>}
       </main>
 
       <Navbar page={page} onNavigate={navigateTo} lang={lang} />

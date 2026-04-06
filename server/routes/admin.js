@@ -30,7 +30,7 @@ router.get('/matchs', checkToken, (req, res) => {
 // PATCH /api/admin/matchs/:id — mise à jour statut et/ou score
 // Body : { statut?, score_reel_a?, score_reel_b?, recalculer? }
 router.patch('/matchs/:id', checkToken, (req, res) => {
-  const { statut, score_reel_a, score_reel_b, recalculer } = req.body;
+  const { statut, score_reel_a, score_reel_b, recalculer, is_featured } = req.body;
 
   const match = db.prepare('SELECT * FROM matchs WHERE id = ?').get(req.params.id);
   if (!match) return res.status(404).json({ error: 'Match introuvable.' });
@@ -73,6 +73,16 @@ router.patch('/matchs/:id', checkToken, (req, res) => {
   if (recalculer && score_reel_a == null) {
     calculerPoints(matchId);
     logger.info({ ip: req.ip, matchId, action: 'recalcul' }, '[admin] Points recalculés');
+  }
+
+  // Match du jour : un seul featured par journée
+  if (is_featured != null) {
+    const val = is_featured ? 1 : 0;
+    if (val === 1) {
+      db.prepare('UPDATE matchs SET is_featured = 0 WHERE journee = ? AND id != ?').run(match.journee, matchId);
+    }
+    db.prepare('UPDATE matchs SET is_featured = ? WHERE id = ?').run(val, matchId);
+    logger.info({ ip: req.ip, matchId, action: 'featured', is_featured: val }, '[admin] Match du jour modifié');
   }
 
   // Réinitialisation complète → score NULL, statut a_venir, points pronos remis à NULL
