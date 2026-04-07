@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
-const { calculerPoints } = require('../scoring');
+const { calculerPoints, resoudreChallenges } = require('../scoring');
 const logger  = require('../logger');
 
 // Middleware — vérifie le token admin à chaque requête
@@ -66,6 +66,7 @@ router.patch('/matchs/:id', checkToken, (req, res) => {
       UPDATE matchs SET score_reel_a = ?, score_reel_b = ?, statut = 'termine' WHERE id = ?
     `).run(req.body.score_reel_a, req.body.score_reel_b, matchId);
     calculerPoints(matchId);
+    resoudreChallenges(matchId);
     logger.info({ ip: req.ip, matchId, action: 'score', score: `${req.body.score_reel_a}-${req.body.score_reel_b}` }, '[admin] Score saisi + points calculés');
   }
 

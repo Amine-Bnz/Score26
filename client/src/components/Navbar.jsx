@@ -9,7 +9,7 @@ export default function Navbar({ page, onNavigate, lang }) {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface-100/80 dark:bg-surface-950/80 backdrop-blur-xl border-t border-surface-200 dark:border-surface-800/30 flex h-16 z-10">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface-100/80 dark:bg-surface-950/80 backdrop-blur-xl border-t border-surface-200 dark:border-surface-800/30 flex h-16 z-10 safe-area-inset-bottom">
       {items.map(({ key, Icon, labelFr, labelEn }) => {
         const active = page === key
         const label  = lang === 'fr' ? labelFr : labelEn

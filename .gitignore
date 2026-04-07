@@ -6,3 +6,4 @@ dist/
 claude.md
 journal.md
 settings.local.json
+.claudeignore

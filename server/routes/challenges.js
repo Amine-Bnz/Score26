@@ -4,6 +4,7 @@ const router  = express.Router();
 const db      = require('../database');
 
 // GET /api/challenges/:userId — mes défis (en cours + historique)
+// Inclut les pronos et points des deux joueurs quand disponibles
 router.get('/:userId', (req, res) => {
   const userId = req.params.userId;
 
@@ -11,11 +12,15 @@ router.get('/:userId', (req, res) => {
     SELECT c.id, c.challenger_id, c.opponent_id, c.match_id, c.status, c.winner_id, c.created_at,
       m.equipe_a, m.equipe_b, m.date_coup_envoi, m.score_reel_a, m.score_reel_b, m.statut AS match_statut,
       uc.pseudo AS challenger_pseudo, uc.avatar_seed AS challenger_avatar,
-      uo.pseudo AS opponent_pseudo, uo.avatar_seed AS opponent_avatar
+      uo.pseudo AS opponent_pseudo, uo.avatar_seed AS opponent_avatar,
+      p1.score_predit_a AS challenger_predit_a, p1.score_predit_b AS challenger_predit_b, p1.points_obtenus AS challenger_points,
+      p2.score_predit_a AS opponent_predit_a, p2.score_predit_b AS opponent_predit_b, p2.points_obtenus AS opponent_points
     FROM challenges c
     JOIN matchs m ON m.id = c.match_id
     JOIN users uc ON uc.id = c.challenger_id
     JOIN users uo ON uo.id = c.opponent_id
+    LEFT JOIN pronos p1 ON p1.user_id = c.challenger_id AND p1.match_id = c.match_id
+    LEFT JOIN pronos p2 ON p2.user_id = c.opponent_id  AND p2.match_id = c.match_id
     WHERE c.challenger_id = ? OR c.opponent_id = ?
     ORDER BY c.created_at DESC
     LIMIT 50
@@ -51,7 +56,7 @@ router.post('/', (req, res) => {
   // Vérifier pas de défi en double
   const existing = db.prepare(`
     SELECT 1 FROM challenges
-    WHERE match_id = ? AND status = 'pending'
+    WHERE match_id = ? AND status IN ('pending', 'accepted')
     AND ((challenger_id = ? AND opponent_id = ?) OR (challenger_id = ? AND opponent_id = ?))
   `).get(match_id, user_id, opponent_id, opponent_id, user_id);
   if (existing) {
@@ -87,6 +92,19 @@ router.post('/:id/decline', (req, res) => {
   if (challenge.opponent_id !== user_id) return res.status(403).json({ error: 'Seul l\'adversaire peut refuser.' });
 
   db.prepare("UPDATE challenges SET status = 'declined' WHERE id = ?").run(req.params.id);
+  return res.json({ ok: true });
+});
+
+// DELETE /api/challenges/:id — annuler un défi (par le challenger uniquement, si pending)
+router.delete('/:id', (req, res) => {
+  const { user_id } = req.body;
+  const challenge = db.prepare('SELECT * FROM challenges WHERE id = ?').get(req.params.id);
+
+  if (!challenge) return res.status(404).json({ error: 'Défi introuvable.' });
+  if (challenge.challenger_id !== user_id) return res.status(403).json({ error: 'Seul le créateur peut annuler.' });
+  if (challenge.status !== 'pending') return res.status(400).json({ error: 'Seul un défi en attente peut être annulé.' });
+
+  db.prepare('DELETE FROM challenges WHERE id = ?').run(req.params.id);
   return res.json({ ok: true });
 });
 

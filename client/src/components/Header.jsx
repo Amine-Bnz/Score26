@@ -97,7 +97,7 @@ export default function Header({ lang, onLangToggle, theme, onThemeToggle, pendi
 
   return (
     <>
-      <header className="flex items-center justify-between px-5 py-3 bg-surface-100/80 dark:bg-surface-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-surface-200 dark:border-surface-800/40">
+      <header className="flex items-center justify-between px-5 py-3 bg-surface-100/80 dark:bg-surface-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-surface-200 dark:border-surface-800/40 safe-area-inset-top">
         {/* Toggle langue */}
         <button
           onClick={() => { navigator.vibrate?.(10); onLangToggle() }}

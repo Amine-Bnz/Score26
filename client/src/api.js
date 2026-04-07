@@ -206,6 +206,15 @@ export async function declineChallenge({ challengeId, user_id }) {
   return handleResponse(res)
 }
 
+export async function cancelChallenge({ challengeId, user_id }) {
+  const res = await fetch(`${BASE}/challenges/${challengeId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id }),
+  })
+  return handleResponse(res)
+}
+
 // ── Pronos bonus ──────────────────────────────────────────────────────────────
 
 export async function getBonusPronos(userId) {

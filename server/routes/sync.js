@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../database');
 const logger = require('../logger');
 const { syncCalendrier, syncResultats } = require('../services/footballData');
-const { calculerPoints } = require('../scoring');
+const { calculerPoints, resoudreChallenges } = require('../scoring');
 
 // Middleware : vérifie le token admin avant chaque route de sync
 function adminOnly(req, res, next) {
@@ -32,7 +32,7 @@ router.post('/calendrier', adminOnly, async (req, res) => {
 // Récupère les scores des matchs terminés et calcule les points
 router.post('/resultats', adminOnly, async (req, res) => {
   try {
-    const mis_a_jour = await syncResultats(db, { calculerPoints });
+    const mis_a_jour = await syncResultats(db, { calculerPoints, resoudreChallenges });
     return res.json({ ok: true, mis_a_jour });
   } catch (e) {
     logger.error({ err: e }, '[sync résultats] Erreur');

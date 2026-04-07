@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
-import { getFriendRanking, addFriend, removeFriend, getGlobalRanking, getFriendHistory, compareFriend, getMyGroups, getGroupRanking, createGroup, joinGroup, leaveGroup, getMatchdayRanking, getMatchdayList } from '../api'
+import { getFriendRanking, addFriend, removeFriend, getGlobalRanking, getFriendHistory, compareFriend, getMyGroups, getGroupRanking, createGroup, joinGroup, leaveGroup, getMatchdayRanking, getMatchdayList, getMyChallenges, createChallenge, acceptChallenge, declineChallenge, cancelChallenge, getMatchs } from '../api'
 import { t } from '../i18n'
 import AvatarInitials from '../components/AvatarInitials'
+import ChallengeCard from '../components/ChallengeCard'
 import { RankingRowSkeleton } from '../components/Skeleton'
 
 export default function Amis({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
@@ -87,9 +88,15 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [compareData, setCompareData] = useState(null)
   const [compareLoading, setCompareLoading] = useState(false)
+  const [challenges, setChallenges] = useState([])
+  const [challengeFriend, setChallengeFriend] = useState(null) // { id, pseudo }
   const { toast, showToast } = useToast()
 
-  useEffect(() => { loadRanking() }, [userId])
+  useEffect(() => { loadRanking(); loadChallenges() }, [userId])
+
+  function loadChallenges() {
+    getMyChallenges(userId).then(data => { if (Array.isArray(data)) setChallenges(data) })
+  }
 
   // Auto-add from deep-link
   useEffect(() => {
@@ -150,6 +157,21 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
 
   if (loading) return <div className="flex flex-col gap-2">{[0,1,2,3,4].map(i => <RankingRowSkeleton key={i} />)}</div>
 
+  // Afficher les défis avec un ami
+  if (challengeFriend) {
+    return (
+      <ChallengesWithFriendView
+        userId={userId}
+        friend={challengeFriend}
+        challenges={challenges}
+        lang={lang}
+        onBack={() => setChallengeFriend(null)}
+        onRefresh={loadChallenges}
+        showToast={showToast}
+      />
+    )
+  }
+
   // Afficher la comparaison
   if (compareData) {
     return <CompareView data={compareData} lang={lang} onBack={() => setCompareData(null)} />
@@ -160,9 +182,30 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
     return <FriendHistoryView data={historyFriend} lang={lang} onBack={() => setHistoryFriend(null)} />
   }
 
+  const pendingReceived = challenges.filter(c => c.status === 'pending' && c.opponent_id === userId)
+
   return (
     <>
       <Toast toast={toast} />
+
+      {/* Bannière défis reçus en attente */}
+      {pendingReceived.length > 0 && (
+        <PendingChallengesBanner
+          challenges={pendingReceived}
+          userId={userId}
+          lang={lang}
+          onAccept={async id => {
+            const res = await acceptChallenge({ challengeId: id, user_id: userId })
+            if (!res.error) { showToast(t(lang, 'challengeAccepted')); loadChallenges() }
+            else showToast(res.error, true)
+          }}
+          onDecline={async id => {
+            const res = await declineChallenge({ challengeId: id, user_id: userId })
+            if (!res.error) { showToast(t(lang, 'challengeDeclined')); loadChallenges() }
+            else showToast(res.error, true)
+          }}
+        />
+      )}
 
       {/* Mon code ami */}
       {friendCode && (
@@ -229,7 +272,7 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
       )}
 
       {ranking.length > 1 && (
-        <RankingList ranking={ranking} userId={userId} lang={lang} onRemove={handleRemove} onHistory={openHistory} onCompare={openCompare} />
+        <RankingList ranking={ranking} userId={userId} lang={lang} onRemove={handleRemove} onHistory={openHistory} onCompare={openCompare} onChallenge={friend => setChallengeFriend(friend)} />
       )}
     </>
   )
@@ -564,7 +607,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
 }
 
 // ── Composant Ranking partagé ─────────────────────────────────────────────────
-function RankingList({ ranking, userId, lang, onRemove, onHistory, onCompare }) {
+function RankingList({ ranking, userId, lang, onRemove, onHistory, onCompare, onChallenge }) {
   return (
     <div className="flex flex-col gap-2">
       {ranking.map((user, i) => {
@@ -599,6 +642,18 @@ function RankingList({ ranking, userId, lang, onRemove, onHistory, onCompare }) 
             </span>
 
             {/* Actions (amis seulement) */}
+            {!isMe && onChallenge && (
+              <button
+                onClick={() => onChallenge({ id: user.id, pseudo: user.pseudo })}
+                className="text-surface-400 hover:text-gold transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                aria-label={t(lang, 'challenge')}
+                title={t(lang, 'challenge')}
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+              </button>
+            )}
             {!isMe && onCompare && (
               <button
                 onClick={() => onCompare(user.id)}
@@ -716,6 +771,187 @@ function CompareView({ data, lang, onBack }) {
             )
           })}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Bannière défis reçus en attente ─────────────────────────────────────────
+function PendingChallengesBanner({ challenges, userId, lang, onAccept, onDecline }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="rounded-xl bg-gold/5 border border-gold/20 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-left"
+      >
+        <span className="w-5 h-5 rounded-full bg-gold/20 flex items-center justify-center text-[10px] font-bold text-gold flex-shrink-0">
+          {challenges.length}
+        </span>
+        <span className="text-sm font-semibold text-gold flex-1">
+          {challenges.length} {t(lang, 'pendingChallengesCount')}
+        </span>
+        <svg viewBox="0 0 24 24" className={`w-4 h-4 text-gold transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {expanded && (
+        <div className="flex flex-col gap-2 px-3 pb-3">
+          {challenges.map(c => (
+            <ChallengeCard key={c.id} challenge={c} userId={userId} lang={lang} onAccept={onAccept} onDecline={onDecline} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Vue défis avec un ami ───────────────────────────────────────────────────
+function ChallengesWithFriendView({ userId, friend, challenges, lang, onBack, onRefresh, showToast }) {
+  const [showMatchPicker, setShowMatchPicker] = useState(false)
+  const [upcomingMatchs, setUpcomingMatchs] = useState([])
+  const [loadingMatchs, setLoadingMatchs] = useState(false)
+
+  // Filtre les défis entre userId et friend.id
+  const friendChallenges = challenges.filter(c =>
+    (c.challenger_id === friend.id && c.opponent_id === userId) ||
+    (c.challenger_id === userId && c.opponent_id === friend.id)
+  )
+
+  // Sépare en catégories
+  const pending = friendChallenges.filter(c => c.status === 'pending' || c.status === 'accepted')
+  const resolved = friendChallenges.filter(c => c.status === 'resolved')
+  const declined = friendChallenges.filter(c => c.status === 'declined')
+
+  async function openMatchPicker() {
+    setLoadingMatchs(true)
+    setShowMatchPicker(true)
+    const data = await getMatchs(userId)
+    if (Array.isArray(data)) {
+      // Matchs à venir uniquement, sans défi actif entre nous deux
+      const activeMatchIds = new Set(
+        friendChallenges.filter(c => c.status === 'pending' || c.status === 'accepted').map(c => c.match_id)
+      )
+      setUpcomingMatchs(data.filter(m => m.statut === 'a_venir' && !activeMatchIds.has(m.id)))
+    }
+    setLoadingMatchs(false)
+  }
+
+  async function handleCreate(matchId) {
+    const res = await createChallenge({ user_id: userId, opponent_id: friend.id, match_id: matchId })
+    if (res.error) { showToast(res.error, true); return }
+    showToast(t(lang, 'challengeSent'))
+    setShowMatchPicker(false)
+    onRefresh()
+  }
+
+  async function handleAccept(id) {
+    const res = await acceptChallenge({ challengeId: id, user_id: userId })
+    if (!res.error) { showToast(t(lang, 'challengeAccepted')); onRefresh() }
+    else showToast(res.error, true)
+  }
+
+  async function handleDecline(id) {
+    const res = await declineChallenge({ challengeId: id, user_id: userId })
+    if (!res.error) { showToast(t(lang, 'challengeDeclined')); onRefresh() }
+    else showToast(res.error, true)
+  }
+
+  async function handleCancel(id) {
+    const res = await cancelChallenge({ challengeId: id, user_id: userId })
+    if (!res.error) { showToast(t(lang, 'challengeCancelled')); onRefresh() }
+    else showToast(res.error, true)
+  }
+
+  // Extraire le nom court de l'équipe
+  function shortTeam(name) {
+    if (!name) return ''
+    const i = name.indexOf(' ')
+    return i >= 0 ? name.slice(i + 1) : name
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <button onClick={onBack} className="text-xs text-accent font-semibold">
+        &larr; {t(lang, 'back')}
+      </button>
+
+      {/* En-tête */}
+      <div className="flex items-center gap-3">
+        <AvatarInitials pseudo={friend.pseudo} size={40} />
+        <div className="flex-1 min-w-0">
+          <p className="font-display font-bold text-surface-900 dark:text-white truncate">{t(lang, 'challengesWith')} {friend.pseudo}</p>
+        </div>
+        <button
+          onClick={openMatchPicker}
+          className="px-3 py-2 rounded-xl bg-accent text-surface-950 text-xs font-semibold active:scale-95 transition-transform flex items-center gap-1.5"
+        >
+          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          {t(lang, 'newChallenge')}
+        </button>
+      </div>
+
+      {/* Sélecteur de match */}
+      {showMatchPicker && (
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-semibold text-surface-600 dark:text-surface-300">{t(lang, 'selectMatch')}</p>
+            <button onClick={() => setShowMatchPicker(false)} className="text-surface-400 hover:text-surface-600 text-xs">✕</button>
+          </div>
+          {loadingMatchs ? (
+            <p className="text-xs text-surface-400 py-4 text-center">...</p>
+          ) : upcomingMatchs.length === 0 ? (
+            <p className="text-xs text-surface-400 py-4 text-center">{t(lang, 'noUpcoming')}</p>
+          ) : (
+            <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
+              {upcomingMatchs.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => handleCreate(m.id)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-surface-900 hover:bg-accent/5 dark:hover:bg-accent/5 transition-colors text-left"
+                >
+                  <span className="text-xs text-surface-700 dark:text-surface-200 flex-1 truncate">
+                    {shortTeam(m.equipe_a)} — {shortTeam(m.equipe_b)}
+                  </span>
+                  <span className="text-[10px] text-surface-400 flex-shrink-0">
+                    {new Date(m.date_coup_envoi.replace(' ', 'T') + 'Z').toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short' })}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Défis en cours / en attente */}
+      {pending.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {pending.map(c => (
+            <ChallengeCard key={c.id} challenge={c} userId={userId} lang={lang} onAccept={handleAccept} onDecline={handleDecline} onCancel={handleCancel} />
+          ))}
+        </div>
+      )}
+
+      {/* Défis terminés */}
+      {resolved.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-surface-400 dark:text-surface-500">
+            {lang === 'fr' ? 'Terminés' : 'Completed'}
+          </p>
+          {resolved.map(c => (
+            <ChallengeCard key={c.id} challenge={c} userId={userId} lang={lang} />
+          ))}
+        </div>
+      )}
+
+      {/* Vide */}
+      {friendChallenges.length === 0 && !showMatchPicker && (
+        <p className="text-center text-surface-400 dark:text-surface-600 py-10 text-sm">
+          {t(lang, 'noChallengesWithFriend')}
+        </p>
       )}
     </div>
   )
