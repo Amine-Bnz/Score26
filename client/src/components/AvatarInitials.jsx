@@ -59,31 +59,3 @@ export default function AvatarInitials({ pseudo, size = 96, className = '' }) {
     </div>
   )
 }
-
-// Version pour html2canvas (inline styles only, pas de className Tailwind)
-export function AvatarInitialsInline({ pseudo, size = 88 }) {
-  const [c1, c2] = getColors(pseudo || '')
-  const initial = getInitials(pseudo)
-  const fontSize = Math.round(size * 0.42)
-
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: `linear-gradient(135deg, ${c1}, ${c2})`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize,
-        fontFamily: '"Space Grotesk", system-ui, sans-serif',
-        fontWeight: 700,
-        color: 'rgba(255,255,255,0.95)',
-        letterSpacing: '-0.02em',
-      }}
-    >
-      {initial}
-    </div>
-  )
-}

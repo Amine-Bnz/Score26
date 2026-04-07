@@ -156,17 +156,34 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
 
       {/* Code ami */}
       {friendCode && (
-        <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-accent/5 border border-accent/15">
-          <span className="text-xs font-medium text-surface-500 dark:text-surface-400">
-            {lang === 'fr' ? 'Mon code ami' : 'My friend code'}
-          </span>
-          <span className="font-display font-bold text-accent tracking-widest flex-1">{friendCode}</span>
-          <button
-            onClick={() => navigator.clipboard?.writeText(friendCode)}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent text-surface-950 active:scale-95 transition-transform"
-          >
-            {lang === 'fr' ? 'Copier' : 'Copy'}
-          </button>
+        <div className="w-full flex flex-col gap-2 px-4 py-3 rounded-xl bg-accent/5 border border-accent/15">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium text-surface-500 dark:text-surface-400">
+              {lang === 'fr' ? 'Mon code ami' : 'My friend code'}
+            </span>
+            <span className="font-display font-bold text-accent tracking-widest flex-1">{friendCode}</span>
+            <button
+              onClick={() => navigator.clipboard?.writeText(friendCode)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-accent text-surface-950 active:scale-95 transition-transform"
+            >
+              {lang === 'fr' ? 'Copier' : 'Copy'}
+            </button>
+          </div>
+          {typeof navigator.share === 'function' && (
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/invite/${friendCode}`
+                navigator.share({
+                  title: 'Score26',
+                  text: lang === 'fr' ? 'Rejoins-moi sur Score26 !' : 'Join me on Score26!',
+                  url,
+                }).catch(() => {})
+              }}
+              className="w-full py-2 rounded-lg bg-surface-100 dark:bg-surface-800 text-xs font-semibold text-surface-600 dark:text-surface-300 active:scale-[0.98] transition-transform"
+            >
+              {t(lang, 'shareInviteLink')}
+            </button>
+          )}
         </div>
       )}
 

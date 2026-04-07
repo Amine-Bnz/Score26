@@ -1,6 +1,6 @@
 const translations = {
   fr: {
-    welcome: 'Bienvenue sur score26',
+    welcome: 'La Coupe du Monde 2026 commence ici.',
     choosePseudo: 'Choisis ton pseudo',
     pseudoPlaceholder: 'Ton pseudo...',
     validate: 'Valider',
@@ -154,7 +154,7 @@ const translations = {
     rankPlayers: 'joueurs',
   },
   en: {
-    welcome: 'Welcome to score26',
+    welcome: 'The 2026 World Cup starts here.',
     choosePseudo: 'Choose your username',
     pseudoPlaceholder: 'Your username...',
     validate: 'Confirm',

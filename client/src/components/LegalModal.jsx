@@ -50,7 +50,7 @@ export default function LegalModal({ lang, onClose }) {
           <button
             onClick={onClose}
             className="bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700 transition rounded-lg w-8 h-8 flex items-center justify-center text-surface-500 dark:text-surface-400 font-bold text-sm flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            aria-label="Fermer"
+            aria-label={isFr ? 'Fermer' : 'Close'}
           >
             ✕
           </button>

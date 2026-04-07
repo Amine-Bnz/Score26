@@ -131,6 +131,7 @@ export default function BonusPronos({ userId, lang, matchs = [], isOnline = true
               placeholder={t(lang, 'selectPlayer')}
               onSubmit={v => save('top_scorer', v)}
               saving={saving === 'top_scorer'}
+              lang={lang}
             />
           </BonusCard>
 
@@ -194,7 +195,7 @@ function TeamSelect({ teams, value, locked, placeholder, onChange, saving }) {
   )
 }
 
-function TextInput({ value: initialValue, locked, placeholder, onSubmit, saving }) {
+function TextInput({ value: initialValue, locked, placeholder, onSubmit, saving, lang }) {
   const [val, setVal] = useState(initialValue)
 
   useEffect(() => { setVal(initialValue) }, [initialValue])
@@ -223,7 +224,7 @@ function TextInput({ value: initialValue, locked, placeholder, onSubmit, saving 
         disabled={saving || !val.trim()}
         className="px-3 py-2 rounded-xl bg-accent text-surface-950 text-xs font-semibold disabled:opacity-40"
       >
-        OK
+        {t(lang, 'validate')}
       </button>
     </form>
   )
