@@ -56,25 +56,25 @@ function AboutModal({ lang, onClose }) {
         {/* Concept */}
         <p className="text-sm text-surface-600 dark:text-surface-300 leading-relaxed">
           {isFr
-            ? 'Prédit les scores des matchs de la Coupe du Monde 2026 et suis tes performances au fil de la compétition.'
-            : 'Predict the scores of the 2026 World Cup matches and track your performance throughout the competition.'}
+            ? 'La Coupe du Monde 2026 arrive et on a tous un avis sur le score. Ici tu poses tes pronos, tu défies tes potes et tu prouves que t\'es le vrai expert du groupe.'
+            : 'The 2026 World Cup is coming and we all have an opinion on the score. Drop your predictions, challenge your mates and prove you\'re the real expert.'}
         </p>
 
         {/* Règles */}
         <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4 flex flex-col gap-2">
           <p className="text-[10px] font-bold uppercase tracking-widest text-surface-400 dark:text-surface-500 mb-1">
-            {isFr ? 'Règles du scoring' : 'Scoring rules'}
+            {isFr ? 'Comment ça marche' : 'How it works'}
           </p>
-          <ScoreLine dotColor="bg-result-exact" label={isFr ? 'Score exact' : 'Exact score'} pts="50 pts" color="text-result-exact" />
-          <ScoreLine dotColor="bg-accent" label={isFr ? 'Bonne issue' : 'Correct outcome'} pts="20 pts" color="text-accent" />
-          <ScoreLine dotColor="bg-result-miss" label={isFr ? 'Mauvaise issue' : 'Wrong outcome'} pts="0 pt" color="text-result-miss" />
+          <ScoreLine dotColor="bg-result-exact" label={isFr ? 'Score exact — le graal' : 'Exact score — the holy grail'} pts="50 pts" color="text-result-exact" />
+          <ScoreLine dotColor="bg-accent" label={isFr ? 'Bonne issue — pas mal' : 'Right outcome — not bad'} pts="20 pts" color="text-accent" />
+          <ScoreLine dotColor="bg-result-miss" label={isFr ? 'Dans les choux' : 'Way off'} pts="0 pt" color="text-result-miss" />
         </div>
 
         {/* Cote cachée */}
         <p className="text-xs text-surface-400 dark:text-surface-500 text-center leading-relaxed">
           {isFr
-            ? 'Une cote secrète est appliquée à chaque prono. Plus ton pronostic est rare, plus il rapporte.'
-            : "A secret multiplier is applied to each prediction. The rarer your pick, the more it's worth."}
+            ? 'Et petit bonus : si personne n\'a mis le même score que toi, tes points sont boostés. Les outsiders sont récompensés.'
+            : "Bonus twist: if nobody picked the same score as you, your points get boosted. Underdogs are rewarded."}
         </p>
       </div>
     </div>

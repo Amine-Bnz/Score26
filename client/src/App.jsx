@@ -11,6 +11,7 @@ import Amis from './pages/Amis'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import { getMatchs, getUser } from './api'
+import { tRandom } from './i18n'
 
 // Lecture localStorage sécurisée (navigation privée Safari peut throw)
 function lsGet(key, fallback) {
@@ -115,9 +116,9 @@ export default function App() {
       const teamB = m.equipe_b?.split(' ').slice(1).join(' ') ?? ''
       const matchLabel = `${teamA} ${m.score_reel_a}-${m.score_reel_b} ${teamB}`
 
-      if (isExact) return { msg: `${matchLabel} · ${lang === 'fr' ? 'Score exact !' : 'Exact score!'} +${pts}`, type: 'exact' }
-      if (issueOk) return { msg: `${matchLabel} · ${lang === 'fr' ? 'Bonne issue !' : 'Correct outcome!'} +${pts}`, type: 'good' }
-      return { msg: `${matchLabel} · ${lang === 'fr' ? 'Raté...' : 'Missed...'} +${pts}`, type: 'miss' }
+      if (isExact) return { msg: `${matchLabel} · ${tRandom(lang, 'resultToastExact')} +${pts}`, type: 'exact' }
+      if (issueOk) return { msg: `${matchLabel} · ${tRandom(lang, 'resultToastGood')} +${pts}`, type: 'good' }
+      return { msg: `${matchLabel} · ${tRandom(lang, 'resultToastMiss')} +${pts}`, type: 'miss' }
     })
 
     // Afficher les toasts en séquence

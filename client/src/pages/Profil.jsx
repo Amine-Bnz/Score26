@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccount, getNotifSettings, updateNotifDelay } from '../api'
+import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccount, getNotifSettings, updateNotifDelay, getFriendRanking } from '../api'
 import { t } from '../i18n'
 import AvatarInitials from '../components/AvatarInitials'
 import { ProfileSkeleton } from '../components/Skeleton'
@@ -29,12 +29,16 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
   const [securePass, setSecurePass] = useState('')
   const [secureError, setSecureError] = useState('')
   const [secureLoading, setSecureLoading] = useState(false)
+  const [friendRanking, setFriendRanking] = useState(null)
 
   useEffect(() => {
     getUser(userId)
       .then(data => { setUser(data) })
       .catch(() => {})
       .finally(() => setLoading(false))
+    getFriendRanking(userId)
+      .then(data => { if (Array.isArray(data) && data.length > 1) setFriendRanking(data) })
+      .catch(() => {})
   }, [userId])
 
   // Vérifie l'état des notifications au montage
@@ -96,19 +100,37 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
   if (!user)   return <div className="flex justify-center py-20 text-surface-400">—</div>
 
   const stats = user.stats ?? { scores_exacts: 0, bonnes_issues: 0, rates: 0, score_total: 0 }
+  const totalPlayed = stats.scores_exacts + stats.bonnes_issues + stats.rates
+  const successRate = totalPlayed > 0 ? Math.round(((stats.scores_exacts + stats.bonnes_issues) / totalPlayed) * 100) : null
+
+  // Phrase contextuelle selon le taux de réussite
+  function getVibeKey() {
+    if (successRate === null || totalPlayed < 2) return 'profileVibe0'
+    if (successRate < 25) return 'profileVibe0'
+    if (successRate < 45) return 'profileVibe1'
+    if (successRate < 65) return 'profileVibe2'
+    if (successRate < 85) return 'profileVibe3'
+    return 'profileVibe4'
+  }
 
   return (
     <div className="flex flex-col items-center pt-8 gap-6">
       {/* Avatar */}
       <AvatarInitials pseudo={user.pseudo} size={96} />
 
-      {/* Pseudo + score */}
+      {/* Pseudo + score + rang */}
       <div className="text-center">
         <p className="font-display text-xl font-bold text-surface-900 dark:text-white">{user.pseudo}</p>
         <p className="font-display text-3xl font-bold text-accent mt-1 tabular-nums">
           {stats.score_total ?? 0}
           <span className="text-base font-medium text-surface-400 dark:text-surface-500 ml-1">pt</span>
         </p>
+        {user.rank != null && (
+          <p className="text-xs text-surface-400 dark:text-surface-500 mt-1 tabular-nums">
+            <span className="font-bold text-surface-600 dark:text-surface-300">#{user.rank}</span>
+            {' '}{t(lang, 'rankLabel')} {user.totalPlayers}
+          </p>
+        )}
       </div>
 
       {/* Stats en grille 3 colonnes */}
@@ -117,6 +139,20 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
         <StatBlock value={stats.bonnes_issues} label={t(lang, 'goodOutcomes')} color="text-accent"       bg="bg-accent/8" />
         <StatBlock value={stats.rates}         label={t(lang, 'missed')}       color="text-result-miss"  bg="bg-result-miss/8" />
       </div>
+
+      {/* Taux de réussite + phrase contextuelle */}
+      {totalPlayed > 0 && (
+        <div className="w-full flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-800/60">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-surface-500 dark:text-surface-400">{t(lang, 'successRate')}</span>
+            <span className="font-display text-lg font-bold text-accent tabular-nums">{successRate}%</span>
+          </div>
+          <p className="text-[11px] text-surface-400 dark:text-surface-500 italic">{t(lang, getVibeKey())}</p>
+        </div>
+      )}
+
+      {/* Mini classement amis */}
+      {friendRanking && <MiniRankingAmis ranking={friendRanking} userId={userId} lang={lang} />}
 
       {/* Code ami */}
       {friendCode && (
@@ -206,7 +242,7 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
                 }}
                 className="w-full py-2.5 rounded-lg bg-accent text-surface-950 font-semibold text-sm active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                {secureLoading ? '...' : t(lang, 'validate')}
+                {secureLoading ? <span className="spinner-btn" /> : t(lang, 'validate')}
               </button>
             </div>
           )}
@@ -275,8 +311,51 @@ function NotifButton({ status, lang, onEnable, onDisable }) {
       disabled={status === 'subscribing'}
       className="w-full py-3 rounded-xl bg-surface-100 dark:bg-surface-800 active:scale-[0.98] text-surface-600 dark:text-surface-300 font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      {status === 'subscribing' ? '...' : t(lang, 'enableNotifs')}
+      {status === 'subscribing' ? <span className="spinner-btn" /> : t(lang, 'enableNotifs')}
     </button>
+  )
+}
+
+function MiniRankingAmis({ ranking, userId, lang }) {
+  const myIndex = ranking.findIndex(r => r.id === userId)
+  // Afficher le podium (top 3) + soi-même si pas dans le top 3
+  const podium = ranking.slice(0, 3)
+  const showSelf = myIndex > 2
+
+  const medals = ['#D4A24E', '#A0AEC0', '#CD7F32'] // or, argent, bronze
+
+  return (
+    <div className="w-full rounded-xl bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-800/60 overflow-hidden">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+        <span className="text-xs font-semibold text-surface-700 dark:text-surface-300">{t(lang, 'friendRanking')}</span>
+        <span className="text-[10px] text-surface-400 dark:text-surface-500">{ranking.length} {t(lang, 'rankPlayers')}</span>
+      </div>
+      <div className="flex flex-col">
+        {podium.map((r, i) => (
+          <div key={r.id} className={`flex items-center gap-3 px-4 py-2 ${r.id === userId ? 'bg-accent/8' : ''}`}>
+            <span className="w-5 text-center text-xs font-bold" style={{ color: medals[i] }}>{i + 1}</span>
+            <AvatarInitials pseudo={r.pseudo} size={24} />
+            <span className={`flex-1 text-xs font-medium truncate ${r.id === userId ? 'text-accent' : 'text-surface-700 dark:text-surface-300'}`}>
+              {r.pseudo} {r.id === userId ? <span className="text-[10px] text-surface-400">({t(lang, 'you')})</span> : ''}
+            </span>
+            <span className="text-xs font-bold tabular-nums text-surface-600 dark:text-surface-400">{r.score_total}</span>
+          </div>
+        ))}
+        {showSelf && (
+          <>
+            <div className="px-4 py-0.5 text-center text-[10px] text-surface-300 dark:text-surface-600">···</div>
+            <div className="flex items-center gap-3 px-4 py-2 bg-accent/8">
+              <span className="w-5 text-center text-xs font-bold text-surface-500">{myIndex + 1}</span>
+              <AvatarInitials pseudo={ranking[myIndex].pseudo} size={24} />
+              <span className="flex-1 text-xs font-medium truncate text-accent">
+                {ranking[myIndex].pseudo} <span className="text-[10px] text-surface-400">({t(lang, 'you')})</span>
+              </span>
+              <span className="text-xs font-bold tabular-nums text-surface-600 dark:text-surface-400">{ranking[myIndex].score_total}</span>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 

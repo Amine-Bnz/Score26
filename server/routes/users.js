@@ -137,7 +137,22 @@ router.get('/:id', (req, res) => {
     WHERE p.user_id = ? AND p.points_obtenus IS NOT NULL
   `).get(req.params.id);
 
-  return res.json({ ...user, stats });
+  // Rang global : nombre de joueurs avec un score strictement supérieur + 1
+  const userScore = stats.score_total;
+  const { rank } = db.prepare(`
+    SELECT COUNT(*) + 1 AS rank FROM (
+      SELECT COALESCE(SUM(p.points_obtenus), 0) AS total
+      FROM users u
+      LEFT JOIN pronos p ON p.user_id = u.id AND p.points_obtenus IS NOT NULL
+      WHERE u.id != ?
+      GROUP BY u.id
+      HAVING total > ?
+    )
+  `).get(req.params.id, userScore);
+
+  const totalPlayers = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
+
+  return res.json({ ...user, stats, rank, totalPlayers });
 });
 
 module.exports = router;

@@ -94,6 +94,21 @@
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
+/* ── Spinner inline (boutons loading) ───────────────── */
+@keyframes spin26 {
+  to { transform: rotate(360deg); }
+}
+.spinner-btn {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin26 0.6s linear infinite;
+  vertical-align: middle;
+}
+
 /* ── Base styles ─────────────────────────────────────── */
 body {
   background-color: #f4f5f7;

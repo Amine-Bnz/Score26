@@ -383,7 +383,7 @@ function GlobalTab({ userId, lang }) {
               disabled={loadingMore}
               className="w-full py-2.5 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-500 dark:text-surface-400 text-xs font-semibold active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
             >
-              {loadingMore ? '...' : (lang === 'fr' ? 'Voir plus' : 'Load more')}
+              {loadingMore ? <span className="spinner-btn" /> : (lang === 'fr' ? 'Voir plus' : 'Load more')}
             </button>
           )}
         </>

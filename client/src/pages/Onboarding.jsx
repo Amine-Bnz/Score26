@@ -118,7 +118,7 @@ function RegisterForm({ lang, onComplete, onSwitch }) {
         type="submit" disabled={loading}
         className="w-full py-3 rounded-xl bg-accent hover:bg-accent-dark active:scale-[0.98] text-surface-950 font-semibold text-base transition-all disabled:opacity-50"
       >
-        {loading ? '...' : t(lang, 'registerAccount')}
+        {loading ? <span className="spinner-btn" /> : t(lang, 'registerAccount')}
       </button>
       <p className="text-xs text-center text-surface-400">
         {t(lang, 'alreadyHaveAccount')}{' '}
@@ -176,7 +176,7 @@ function LoginForm({ lang, onComplete, onSwitch }) {
         type="submit" disabled={loading}
         className="w-full py-3 rounded-xl bg-accent hover:bg-accent-dark active:scale-[0.98] text-surface-950 font-semibold text-base transition-all disabled:opacity-50"
       >
-        {loading ? '...' : t(lang, 'login')}
+        {loading ? <span className="spinner-btn" /> : t(lang, 'login')}
       </button>
       <p className="text-xs text-center text-surface-400">
         {t(lang, 'noAccountYet')}{' '}
@@ -230,7 +230,7 @@ function QuickForm({ lang, onComplete, onBack }) {
         type="submit" disabled={loading}
         className="w-full py-3 rounded-xl bg-accent hover:bg-accent-dark active:scale-[0.98] text-surface-950 font-semibold text-base transition-all disabled:opacity-50"
       >
-        {loading ? '...' : t(lang, 'validate')}
+        {loading ? <span className="spinner-btn" /> : t(lang, 'validate')}
       </button>
       <button type="button" onClick={onBack} className="text-xs text-accent font-medium text-center">
         &larr; {t(lang, 'back')}

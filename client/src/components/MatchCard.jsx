@@ -319,8 +319,8 @@ function FriendPronosSection({ matchId, userId, lang }) {
       </button>
       {open && (
         <div className="mt-2 flex flex-col gap-1.5">
-          {loading && <span className="text-[10px] text-surface-400">...</span>}
-          {pronos?.length === 0 && <span className="text-[10px] text-surface-400 dark:text-surface-500">—</span>}
+          {loading && <span className="spinner-btn text-surface-400" style={{ width: 12, height: 12, borderWidth: 1.5 }} />}
+          {pronos?.length === 0 && <span className="text-[10px] text-surface-400 dark:text-surface-500">{lang === 'fr' ? 'Personne n\'a joué ce match' : 'No one played this match'}</span>}
           {pronos?.map(p => (
             <div key={p.pseudo} className="flex items-center gap-2">
               <span className="text-[11px] text-surface-500 dark:text-surface-400 truncate flex-1">{p.pseudo}</span>

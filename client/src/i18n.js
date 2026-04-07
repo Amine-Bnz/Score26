@@ -112,9 +112,9 @@ const translations = {
     selectMatch: 'Choisis un match',
     newChallenge: 'Nouveau défi',
     challengesWith: 'Défis avec',
-    resultToastExact: 'Score exact !',
-    resultToastGood: 'Bonne issue !',
-    resultToastMiss: 'Raté...',
+    resultToastExact: ['Score exact !', 'Dans le mille !', 'Tu gères !', 'Quel crack !'],
+    resultToastGood: ['Bonne issue !', 'Bien vu !', 'Pas loin du parfait !', 'Le nez creux !'],
+    resultToastMiss: ['Raté...', 'Aïe...', 'C\'est pas passé...', 'On y croyait...'],
     bonusPronos: 'Pronos bonus',
     bonusWinner: 'Vainqueur final',
     bonusTopScorer: 'Meilleur buteur',
@@ -143,6 +143,15 @@ const translations = {
     syncPending: 'pronos en attente',
     syncDone: 'Pronos synchronisés !',
     bracket: 'Tableau final',
+    successRate: 'Taux de réussite',
+    rankGlobal: 'Classement mondial',
+    profileVibe0: 'Ça va venir, lâche rien !',
+    profileVibe1: 'Pas mal, tu montes en puissance',
+    profileVibe2: 'Bon feeling football',
+    profileVibe3: 'Sacré pronostiqueur',
+    profileVibe4: 'Machine à pronos',
+    rankLabel: 'sur',
+    rankPlayers: 'joueurs',
   },
   en: {
     welcome: 'Welcome to score26',
@@ -257,9 +266,9 @@ const translations = {
     selectMatch: 'Pick a match',
     newChallenge: 'New challenge',
     challengesWith: 'Challenges with',
-    resultToastExact: 'Exact score!',
-    resultToastGood: 'Correct outcome!',
-    resultToastMiss: 'Missed...',
+    resultToastExact: ['Exact score!', 'Bullseye!', 'Nailed it!', 'You legend!'],
+    resultToastGood: ['Correct outcome!', 'Nice call!', 'Almost perfect!', 'Good instinct!'],
+    resultToastMiss: ['Missed...', 'Ouch...', 'Not this time...', 'Better luck next one...'],
     bonusPronos: 'Bonus predictions',
     bonusWinner: 'Tournament winner',
     bonusTopScorer: 'Top scorer',
@@ -288,6 +297,15 @@ const translations = {
     syncPending: 'pending predictions',
     syncDone: 'Predictions synced!',
     bracket: 'Bracket',
+    successRate: 'Success rate',
+    rankGlobal: 'World ranking',
+    profileVibe0: 'Hang in there, it\'s coming!',
+    profileVibe1: 'Not bad, you\'re heating up',
+    profileVibe2: 'Solid football instinct',
+    profileVibe3: 'Prediction master',
+    profileVibe4: 'Prediction machine',
+    rankLabel: 'of',
+    rankPlayers: 'players',
   },
 }
 
@@ -389,6 +407,13 @@ export function splitTeam(fullName, lang) {
 
 export function t(lang, key) {
   return translations[lang]?.[key] ?? key
+}
+
+// Retourne une variante aléatoire pour les clés qui sont des tableaux
+export function tRandom(lang, key) {
+  const val = translations[lang]?.[key]
+  if (Array.isArray(val)) return val[Math.floor(Math.random() * val.length)]
+  return val ?? key
 }
 
 // Ordre de tri des phases / groupes (CDM 2026 : 12 groupes A-L)
