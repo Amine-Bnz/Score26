@@ -15,7 +15,19 @@ const { calculerPoints, resoudreChallenges } = require('./scoring');
 const { envoyerNotifAvantMatch, envoyerNotifResultat }  = require('./services/pushNotifications');
 
 // Sécurité : headers HTTP (X-Content-Type-Options, X-Frame-Options, etc.)
-app.use(helmet());
+// CSP adapté pour servir le SPA React (inline script theme-init, Google Fonts)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+    },
+  },
+}));
 
 // Compression gzip/brotli des réponses HTTP
 app.use(compression());
@@ -72,7 +84,8 @@ const path = require('path');
 const clientDist = path.join(__dirname, 'public');
 app.use(express.static(clientDist));
 // Fallback SPA : toute route non-API renvoie index.html (gère /invite/CODE, /group/CODE, etc.)
-app.get('*', (req, res) => {
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 

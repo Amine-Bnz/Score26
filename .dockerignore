@@ -1,0 +1,11 @@
+**/node_modules
+**/*.db
+**/.env
+server/tests
+server/generate-vapid.js
+server/.dockerignore
+server/fly.toml
+.git
+.github
+*.md
+generate-icons.*
