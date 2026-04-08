@@ -1,21 +1,23 @@
 const db = require('./database');
+const logger = require('./logger');
 
-// ─── Remise à zéro ────────────────────────────────────────────────────────────
-// Les pronos référencent les matchs (FK), on les supprime en premier
-db.prepare('DELETE FROM pronos').run();
-db.prepare('DELETE FROM matchs').run();
-db.prepare("DELETE FROM sqlite_sequence WHERE name = 'matchs'").run();
-db.prepare("DELETE FROM sqlite_sequence WHERE name = 'pronos'").run();
+function runSeed() {
+  // ─── Remise à zéro ────────────────────────────────────────────────────────────
+  // Les pronos référencent les matchs (FK), on les supprime en premier
+  db.prepare('DELETE FROM pronos').run();
+  db.prepare('DELETE FROM matchs').run();
+  db.prepare("DELETE FROM sqlite_sequence WHERE name = 'matchs'").run();
+  db.prepare("DELETE FROM sqlite_sequence WHERE name = 'pronos'").run();
 
-// ─── Insertion ────────────────────────────────────────────────────────────────
-const insert = db.prepare(`
-  INSERT INTO matchs (equipe_a, equipe_b, date_coup_envoi, phase, journee, groupe, statut)
-  VALUES (@a, @b, @date, 'groupe', @j, @g, 'a_venir')
-`);
+  // ─── Insertion ────────────────────────────────────────────────────────────────
+  const insert = db.prepare(`
+    INSERT INTO matchs (equipe_a, equipe_b, date_coup_envoi, phase, journee, groupe, statut)
+    VALUES (@a, @b, @date, 'groupe', @j, @g, 'a_venir')
+  `);
 
-const seedAll = db.transaction((matchs) => {
-  for (const m of matchs) insert.run(m);
-});
+  const seedAll = db.transaction((matchs) => {
+    for (const m of matchs) insert.run(m);
+  });
 
 // Format des dates : heure UTC stockée en base
 // Heures source : Yahoo Sports (heure ET = UTC-4 en été) → converties en UTC (+4h)
@@ -125,7 +127,14 @@ const matchs = [
   { g:'L', j:3, a:'🇭🇷 Croatie',         b:'🇬🇭 Ghana',           date:'2026-06-27 21:00:00' },
 ];
 
-seedAll(matchs);
+  seedAll(matchs);
+  logger.info(`Seed terminé — ${matchs.length} matchs insérés (12 groupes × 6 matchs, CDM 2026 réel).`);
+}
 
-console.log(`Seed terminé — ${matchs.length} matchs insérés (12 groupes × 6 matchs, CDM 2026 réel).`);
-db.close();
+// Exécute la seed si lancé en standalone (node seed.js), sinon exporte la fonction
+if (require.main === module) {
+  runSeed();
+  db.close();
+}
+
+module.exports = { runSeed };

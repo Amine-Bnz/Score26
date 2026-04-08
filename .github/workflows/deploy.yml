@@ -1,0 +1,27 @@
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to Fly.io
+        uses: superfly/flyctl-actions@master
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        with:
+          args: deploy
+          workdir: ./server
+      
+      - name: Wait for deployment to be ready
+        run: sleep 10
+
+      - name: Run seed
+        run: |
+          curl -X POST "https://score26.fly.dev/api/admin/seed?token=${{ secrets.ADMIN_TOKEN }}"

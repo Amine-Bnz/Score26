@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
 const { calculerPoints, resoudreChallenges } = require('../scoring');
+const { runSeed } = require('../seed');
 const logger  = require('../logger');
 
 // Middleware — vérifie le token admin à chaque requête
@@ -98,6 +99,19 @@ router.patch('/matchs/:id', checkToken, (req, res) => {
   }
 
   res.json(db.prepare('SELECT * FROM matchs WHERE id = ?').get(matchId));
+});
+
+// POST /api/admin/seed — réexécute la seed (CDM 2026)
+router.post('/seed', checkToken, (req, res) => {
+  try {
+    runSeed();
+    const count = db.prepare('SELECT COUNT(*) as count FROM matchs').get();
+    logger.info({ ip: req.ip, matchsCount: count.count }, '[admin] Seed exécutée');
+    res.json({ message: 'Seed exécutée avec succès', matchsCount: count.count });
+  } catch (err) {
+    logger.error({ err, ip: req.ip }, '[admin] Erreur lors de la seed');
+    res.status(500).json({ error: 'Erreur lors de la seed', details: err.message });
+  }
 });
 
 module.exports = router;
