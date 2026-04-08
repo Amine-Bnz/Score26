@@ -160,7 +160,7 @@ export default function App() {
         synced={synced}
       />
 
-      <main className="pb-20 px-4 pt-3 overflow-hidden">
+      <main className="pb-nav px-4 pt-3 overflow-hidden">
         {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} initialData={prefetchedMatchs} /></div>}
         {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} initialData={prefetchedMatchs} /></div>}
         {page === 'amis'   && <div key="amis"   className={`page-slide-${slideDir}`}><Amis         userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink} onDeepLinkHandled={() => setDeepLink(null)} /></div>}

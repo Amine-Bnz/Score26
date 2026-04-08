@@ -93,6 +93,10 @@
 .safe-area-inset-bottom {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
+/* padding-bottom du contenu principal = hauteur navbar (4rem) + safe area */
+.pb-nav {
+  padding-bottom: calc(4rem + max(12px, env(safe-area-inset-bottom)));
+}
 
 /* ── Spinner inline (boutons loading) ───────────────── */
 @keyframes spin26 {

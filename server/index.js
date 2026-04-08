@@ -67,6 +67,15 @@ app.use('/api/admin',    require('./routes/admin'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// Servir le build client (React SPA)
+const path = require('path');
+const clientDist = path.join(__dirname, 'public');
+app.use(express.static(clientDist));
+// Fallback SPA : toute route non-API renvoie index.html (gère /invite/CODE, /group/CODE, etc.)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
+});
+
 // Middleware d'erreur — log toutes les réponses 4xx/5xx
 app.use((err, req, res, next) => {
   logger.error({ err, method: req.method, url: req.url }, 'Erreur Express');
