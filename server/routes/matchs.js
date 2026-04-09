@@ -23,11 +23,15 @@ router.get('/', (req, res) => {
       m.score_live_b,
       m.minute_live,
       m.is_featured,
+      m.score_reel_90_a,
+      m.score_reel_90_b,
       p.id             AS prono_id,
       p.score_predit_a,
       p.score_predit_b,
       p.points_obtenus,
-      p.verrouille
+      p.verrouille,
+      p.score_predit_90_a,
+      p.score_predit_90_b
     FROM matchs m
     LEFT JOIN pronos p ON p.match_id = m.id AND p.user_id = ?
     ORDER BY m.date_coup_envoi ASC

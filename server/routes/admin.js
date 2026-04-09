@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
-const { calculerPoints, resoudreChallenges } = require('../scoring');
+const { calculerPoints, resoudreChallenges, resoudreBonusPronos } = require('../scoring');
 const { runSeed } = require('../seed');
 const logger  = require('../logger');
 
@@ -111,6 +111,20 @@ router.post('/seed', checkToken, (req, res) => {
   } catch (err) {
     logger.error({ err, ip: req.ip }, '[admin] Erreur lors de la seed');
     res.status(500).json({ error: 'Erreur lors de la seed', details: err.message });
+  }
+});
+
+// POST /api/admin/bonus/resolve — résoudre les bonus pronos
+// Body : { winner?: string, topScorer?: string, groupResults?: { A: [team1, team2], ... } }
+router.post('/bonus/resolve', checkToken, (req, res) => {
+  const { winner, topScorer, groupResults } = req.body;
+  try {
+    resoudreBonusPronos({ winner, topScorer, groupResults });
+    logger.info({ ip: req.ip, winner, topScorer, groups: groupResults ? Object.keys(groupResults) : [] }, '[admin] Bonus pronos résolus');
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err, ip: req.ip }, '[admin] Erreur résolution bonus');
+    res.status(500).json({ error: 'Erreur lors de la résolution des bonus.' });
   }
 });
 

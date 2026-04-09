@@ -1,5 +1,6 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const logger = require('./logger');
 
 // En prod (Fly.io) : DATABASE_PATH=/data/score26.db (volume persistant)
 // En dev : fichier local dans le dossier server/
@@ -84,13 +85,27 @@ const migrations = [
   "ALTER TABLE push_subscriptions ADD COLUMN notif_delay INTEGER DEFAULT 60",
   // v5 match du jour
   "ALTER TABLE matchs ADD COLUMN is_featured INTEGER NOT NULL DEFAULT 0",
+  // v6 prolongation KO
+  "ALTER TABLE pronos ADD COLUMN score_predit_90_a INTEGER",
+  "ALTER TABLE pronos ADD COLUMN score_predit_90_b INTEGER",
+  "ALTER TABLE matchs ADD COLUMN score_reel_90_a INTEGER",
+  "ALTER TABLE matchs ADD COLUMN score_reel_90_b INTEGER",
 ];
 for (const sql of migrations) {
-  try { db.exec(sql) } catch (_) { /* colonne déjà présente */ }
+  try {
+    db.exec(sql);
+    logger.debug({ sql }, '[migration] Colonne ajoutée');
+  } catch (e) {
+    logger.debug({ sql, error: e.message }, '[migration] Colonne déjà présente (ignoré)');
+  }
 }
 
 // Index unique sur friend_code (idempotent)
-try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_friend_code ON users(friend_code)') } catch (_) {}
+try {
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_friend_code ON users(friend_code)');
+} catch (e) {
+  logger.debug({ error: e.message }, '[migration] Index friend_code déjà existant (ignoré)');
+}
 
 // Générer un friend_code pour les users existants sans code
 function generateFriendCode() {

@@ -2,6 +2,7 @@ const express  = require('express');
 const rateLimit = require('express-rate-limit');
 const router    = express.Router();
 const db        = require('../database');
+const { rankingCache } = require('../cache');
 
 // 5 créations de compte max par IP sur 15 minutes
 const limiterCreation = rateLimit({
@@ -64,6 +65,10 @@ router.get('/ranking', (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
   const offset = (page - 1) * limit;
+  const cacheKey = `ranking:${page}:${limit}`;
+
+  const cached = rankingCache.get(cacheKey);
+  if (cached) return res.json(cached);
 
   const total = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 
@@ -80,7 +85,9 @@ router.get('/ranking', (req, res) => {
     LIMIT ? OFFSET ?
   `).all(limit, offset);
 
-  return res.json({ ranking, page, limit, total, hasMore: offset + ranking.length < total });
+  const result = { ranking, page, limit, total, hasMore: offset + ranking.length < total };
+  rankingCache.set(cacheKey, result);
+  return res.json(result);
 });
 
 // GET /api/users/ranking/matchday — classement par journée
@@ -153,6 +160,82 @@ router.get('/:id', (req, res) => {
   const totalPlayers = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 
   return res.json({ ...user, stats, rank, totalPlayers });
+});
+
+// GET /api/users/:id/history — historique des pronos de l'utilisateur (?phase=groupe&result=exact)
+router.get('/:id/history', (req, res) => {
+  const userId = req.params.id;
+  const { phase, result } = req.query;
+
+  let query = `
+    SELECT m.equipe_a, m.equipe_b, m.score_reel_a, m.score_reel_b,
+           m.phase, m.groupe, m.date_coup_envoi, m.is_featured,
+           p.score_predit_a, p.score_predit_b, p.points_obtenus
+    FROM pronos p
+    JOIN matchs m ON m.id = p.match_id
+    WHERE p.user_id = ? AND m.statut = 'termine' AND p.points_obtenus IS NOT NULL
+  `;
+  const params = [userId];
+
+  if (phase) {
+    if (['groupe', '8e', '4e', 'demi', 'finale'].includes(phase)) {
+      query += ' AND m.phase = ?';
+      params.push(phase);
+    }
+  }
+
+  if (result === 'exact') {
+    query += ' AND p.score_predit_a = m.score_reel_a AND p.score_predit_b = m.score_reel_b';
+  } else if (result === 'good') {
+    query += ' AND p.points_obtenus >= 20 AND NOT (p.score_predit_a = m.score_reel_a AND p.score_predit_b = m.score_reel_b)';
+  } else if (result === 'miss') {
+    query += ' AND p.points_obtenus = 0';
+  }
+
+  query += ' ORDER BY m.date_coup_envoi DESC';
+
+  const pronos = db.prepare(query).all(...params);
+  return res.json(pronos);
+});
+
+// DELETE /api/users/:id — suppression de compte (RGPD)
+router.delete('/:id', (req, res) => {
+  const userId = req.params.id;
+  const { confirm_pseudo } = req.body;
+
+  const user = db.prepare('SELECT id, pseudo FROM users WHERE id = ?').get(userId);
+  if (!user) {
+    return res.status(404).json({ error: 'Utilisateur introuvable.' });
+  }
+
+  // Double vérification : le pseudo doit correspondre
+  if (!confirm_pseudo || confirm_pseudo !== user.pseudo) {
+    return res.status(400).json({ error: 'Confirmation du pseudo requise.' });
+  }
+
+  db.transaction(() => {
+    // Transférer la propriété des groupes ou supprimer si vides
+    const ownedGroups = db.prepare('SELECT id FROM groups_ WHERE owner_id = ?').all(userId);
+    for (const group of ownedGroups) {
+      const nextOwner = db.prepare(
+        'SELECT user_id FROM group_members WHERE group_id = ? AND user_id != ? ORDER BY joined_at ASC LIMIT 1'
+      ).get(group.id, userId);
+      if (nextOwner) {
+        db.prepare('UPDATE groups_ SET owner_id = ? WHERE id = ?').run(nextOwner.user_id, group.id);
+      } else {
+        db.prepare('DELETE FROM groups_ WHERE id = ?').run(group.id);
+      }
+    }
+
+    // Supprimer les pronos (pas de ON DELETE CASCADE sur cette FK)
+    db.prepare('DELETE FROM pronos WHERE user_id = ?').run(userId);
+
+    // Supprimer le user — CASCADE supprime : friendships, push_subscriptions,
+    // notifs_envoyees, notifs_resultats, group_members, challenges, bonus_pronos
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  })();
+
+  return res.json({ ok: true });
 });
 
 module.exports = router;

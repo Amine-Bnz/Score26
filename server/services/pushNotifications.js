@@ -152,4 +152,74 @@ async function envoyerNotifResultat(db, matchId) {
   logger.info(`[push notif résultat] ${lignes.length} notification(s) envoyée(s) pour match ${matchId}`)
 }
 
-module.exports = { envoyerNotifAvantMatch, envoyerNotifResultat }
+// ── Recap de journée ──────────────────────────────────────────────────────────
+// Envoie un récap push quand tous les matchs d'une journée sont terminés
+async function envoyerRecapJournee(db, journee) {
+  if (!initWebPush()) return
+
+  // Vérifier que TOUS les matchs de cette journée sont terminés
+  const matchsJournee = db.prepare('SELECT COUNT(*) AS total FROM matchs WHERE journee = ?').get(journee)
+  const matchsTermines = db.prepare("SELECT COUNT(*) AS total FROM matchs WHERE journee = ? AND statut = 'termine'").get(journee)
+  if (matchsJournee.total === 0 || matchsTermines.total < matchsJournee.total) return
+
+  // Vérifier qu'on n'a pas déjà envoyé ce récap (on utilise un match_id fictif = -journee)
+  const recapMatchId = -journee
+  const alreadySent = db.prepare('SELECT COUNT(*) AS c FROM notifs_resultats WHERE match_id = ?').get(recapMatchId)
+  if (alreadySent.c > 0) return
+
+  // Pour chaque user avec push, calculer ses stats sur cette journée
+  const subs = db.prepare('SELECT DISTINCT user_id, endpoint, p256dh, auth FROM push_subscriptions').all()
+  if (subs.length === 0) return
+
+  const deleteSub = db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?')
+  const insertRecap = db.prepare('INSERT OR IGNORE INTO notifs_resultats (user_id, match_id) VALUES (?, ?)')
+  let sent = 0
+
+  for (const sub of subs) {
+    const stats = db.prepare(`
+      SELECT COALESCE(SUM(p.points_obtenus), 0) AS pts,
+             COUNT(CASE WHEN p.score_predit_a = m.score_reel_a AND p.score_predit_b = m.score_reel_b THEN 1 END) AS exacts,
+             COUNT(*) AS total
+      FROM pronos p
+      JOIN matchs m ON m.id = p.match_id
+      WHERE p.user_id = ? AND m.journee = ? AND p.points_obtenus IS NOT NULL
+    `).get(sub.user_id, journee)
+
+    if (stats.total === 0) continue
+
+    const rank = db.prepare(`
+      SELECT COUNT(*) + 1 AS rank FROM (
+        SELECT COALESCE(SUM(p2.points_obtenus), 0) AS total
+        FROM users u
+        LEFT JOIN pronos p2 ON p2.user_id = u.id AND p2.points_obtenus IS NOT NULL
+        WHERE u.id != ?
+        GROUP BY u.id
+        HAVING total > (
+          SELECT COALESCE(SUM(p3.points_obtenus), 0) FROM pronos p3 WHERE p3.user_id = ? AND p3.points_obtenus IS NOT NULL
+        )
+      )
+    `).get(sub.user_id, sub.user_id)
+
+    const body = `Journée ${journee} terminée ! +${stats.pts}pts`
+      + (stats.exacts > 0 ? ` · ${stats.exacts} score(s) exact(s)` : '')
+      + ` · Classement : #${rank.rank}`
+
+    const payload = JSON.stringify({ title: '📊 Score26 — Récap', body })
+
+    try {
+      await webPush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload)
+      insertRecap.run(sub.user_id, recapMatchId)
+      sent++
+    } catch (err) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        deleteSub.run(sub.endpoint)
+      } else {
+        logger.error({ err }, '[push recap] erreur envoi')
+      }
+    }
+  }
+
+  if (sent > 0) logger.info(`[push recap] ${sent} récap(s) envoyé(s) pour la journée ${journee}`)
+}
+
+module.exports = { envoyerNotifAvantMatch, envoyerNotifResultat, envoyerRecapJournee }

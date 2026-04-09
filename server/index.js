@@ -12,7 +12,8 @@ const db                       = require('./database');
 const { syncResultats }           = require('./services/footballData');
 const { syncLive }                = require('./services/apiFootball');
 const { calculerPoints, resoudreChallenges } = require('./scoring');
-const { envoyerNotifAvantMatch, envoyerNotifResultat }  = require('./services/pushNotifications');
+const { envoyerNotifAvantMatch, envoyerNotifResultat, envoyerRecapJournee }  = require('./services/pushNotifications');
+const { createUserRateLimit }  = require('./middleware/userRateLimit');
 
 // Sécurité : headers HTTP (X-Content-Type-Options, X-Frame-Options, etc.)
 // CSP adapté pour servir le SPA React (inline script theme-init, Google Fonts)
@@ -52,7 +53,7 @@ app.use('/api', rateLimit({
   message: { error: 'Trop de requêtes. Réessaie dans 1 minute.' },
 }));
 
-// Rate limit strict sur les POST de mutation sociale (10 req/15min)
+// Rate limit strict sur les POST de mutation sociale (10 req/15min par IP)
 const socialLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -64,6 +65,15 @@ app.post('/api/friends', socialLimiter);
 app.post('/api/groups', socialLimiter);
 app.post('/api/groups/join', socialLimiter);
 app.post('/api/challenges', socialLimiter);
+
+// Rate limit par user_id sur les routes de mutation (protège contre le spam même IP partagée)
+const userPronoLimit = createUserRateLimit({ windowMs: 60 * 1000, max: 60, message: 'Trop de pronos. Réessaie dans 1 minute.' });
+const userSocialLimit = createUserRateLimit({ windowMs: 15 * 60 * 1000, max: 15, message: 'Trop de tentatives. Réessaie dans 15 minutes.' });
+app.post('/api/pronos', userPronoLimit);
+app.post('/api/friends', userSocialLimit);
+app.post('/api/groups', userSocialLimit);
+app.post('/api/groups/join', userSocialLimit);
+app.post('/api/challenges', userSocialLimit);
 
 app.use('/api/auth',     require('./routes/auth'));
 app.use('/api/users',    require('./routes/users'));
@@ -129,6 +139,17 @@ function lancerPolling() {
           SELECT id FROM matchs WHERE date_coup_envoi <= datetime('now')
         )
       `).run();
+
+      // Expirer les challenges pending dont le match a démarré
+      const expired = db.prepare(`
+        UPDATE challenges SET status = 'expired'
+        WHERE status = 'pending' AND match_id IN (
+          SELECT id FROM matchs WHERE date_coup_envoi <= datetime('now')
+        )
+      `).run();
+      if (expired.changes > 0) {
+        logger.info({ count: expired.changes }, '[challenges] Défis expirés automatiquement');
+      }
     } catch (e) { logger.error({ err: e }, '[verrouillage pronos] Erreur'); }
   }, 60 * 1000);
 
@@ -139,7 +160,7 @@ function lancerPolling() {
 
   // ── Résultats finaux (football-data.org) — toutes les 10 min ──────────────
   if (fdPret) {
-    pollWithBackoff(() => syncResultats(db, { calculerPoints, envoyerNotifResultat, resoudreChallenges }), 10 * 60 * 1000, 'auto-sync résultats');
+    pollWithBackoff(() => syncResultats(db, { calculerPoints, envoyerNotifResultat, resoudreChallenges, envoyerRecapJournee }), 10 * 60 * 1000, 'auto-sync résultats');
     logger.info('Auto-sync résultats activé (football-data.org, toutes les 10 min)');
   } else {
     logger.warn('Auto-sync résultats désactivé — configurer FOOTBALL_DATA_KEY dans .env');

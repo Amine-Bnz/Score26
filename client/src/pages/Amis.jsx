@@ -116,7 +116,7 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   function loadRanking() {
     setLoading(true)
     getFriendRanking(userId)
-      .then(data => { if (!data.error) setRanking(data) })
+      .then(data => { if (!data.error) setRanking(data.ranking ?? data) })
       .finally(() => setLoading(false))
   }
 

@@ -2,8 +2,14 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
 
-// GET /api/friends/:userId — liste des amis avec scores
+// GET /api/friends/:userId — liste des amis avec scores (?page=1&limit=30)
 router.get('/:userId', (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30));
+  const offset = (page - 1) * limit;
+
+  const total = db.prepare('SELECT COUNT(*) AS c FROM friendships WHERE user_id = ?').get(req.params.userId)?.c ?? 0;
+
   const friends = db.prepare(`
     SELECT u.id, u.pseudo, u.avatar_seed,
       COALESCE(SUM(p.points_obtenus), 0) AS score_total
@@ -13,20 +19,25 @@ router.get('/:userId', (req, res) => {
     WHERE f.user_id = ?
     GROUP BY u.id
     ORDER BY score_total DESC
-  `).all(req.params.userId);
+    LIMIT ? OFFSET ?
+  `).all(req.params.userId, limit, offset);
 
-  return res.json(friends);
+  return res.json({ friends, page, limit, total, hasMore: offset + friends.length < total });
 });
 
-// GET /api/friends/:userId/ranking — classement toi + tes amis
+// GET /api/friends/:userId/ranking — classement toi + tes amis (?page=1&limit=50)
 router.get('/:userId/ranking', (req, res) => {
   const userId = req.params.userId;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+  const offset = (page - 1) * limit;
 
   const friendIds = db.prepare('SELECT friend_id FROM friendships WHERE user_id = ?')
     .all(userId)
     .map(r => r.friend_id);
 
   const allIds = [userId, ...friendIds];
+  const total = allIds.length;
   const placeholders = allIds.map(() => '?').join(',');
 
   const ranking = db.prepare(`
@@ -40,9 +51,10 @@ router.get('/:userId/ranking', (req, res) => {
     WHERE u.id IN (${placeholders})
     GROUP BY u.id
     ORDER BY score_total DESC
-  `).all(...allIds);
+    LIMIT ? OFFSET ?
+  `).all(...allIds, limit, offset);
 
-  return res.json(ranking);
+  return res.json({ ranking, page, limit, total, hasMore: offset + ranking.length < total });
 });
 
 // GET /api/friends/:userId/pronos/:matchId — pronos des amis pour un match

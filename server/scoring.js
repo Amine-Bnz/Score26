@@ -1,4 +1,5 @@
 const db = require('./database');
+const { rankingCache } = require('./cache');
 
 // Calcule et persiste les points_obtenus pour tous les pronos d'un match
 // Appelé après la saisie du score réel
@@ -40,6 +41,7 @@ function calculerPoints(matchId) {
   });
 
   calculer();
+  rankingCache.invalidate();
 }
 
 // Retourne les points de base selon les règles métier
@@ -85,4 +87,50 @@ function resoudreChallenges(matchId) {
   })();
 }
 
-module.exports = { calculerPoints, calculerPointsBase, resoudreChallenges };
+// Résoudre les bonus pronos
+// - winner : compare avec le vrai vainqueur (100 pts)
+// - top_scorer : compare avec le meilleur buteur (80 pts)
+// - group_X_qualified : compare avec les 2 premiers du groupe (30 pts chacun)
+function resoudreBonusPronos({ winner, topScorer, groupResults } = {}) {
+  const update = db.prepare('UPDATE bonus_pronos SET points_obtenus = ?, locked = 1 WHERE id = ?');
+
+  db.transaction(() => {
+    // Verrouiller tous les bonus (le tournoi a commencé)
+    db.prepare('UPDATE bonus_pronos SET locked = 1').run();
+
+    // Vainqueur final
+    if (winner) {
+      const bonusWinner = db.prepare("SELECT id, value FROM bonus_pronos WHERE type = 'winner'").all();
+      for (const b of bonusWinner) {
+        const pts = b.value.trim().toLowerCase() === winner.trim().toLowerCase() ? 100 : 0;
+        update.run(pts, b.id);
+      }
+    }
+
+    // Meilleur buteur
+    if (topScorer) {
+      const bonusScorer = db.prepare("SELECT id, value FROM bonus_pronos WHERE type = 'top_scorer'").all();
+      for (const b of bonusScorer) {
+        const pts = b.value.trim().toLowerCase() === topScorer.trim().toLowerCase() ? 80 : 0;
+        update.run(pts, b.id);
+      }
+    }
+
+    // Qualifiés par groupe : groupResults = { A: ['🇫🇷 France', '🇩🇪 Allemagne'], B: [...], ... }
+    if (groupResults) {
+      for (const [group, qualifiedTeams] of Object.entries(groupResults)) {
+        const type = `group_${group}_qualified`;
+        const bonusGroup = db.prepare('SELECT id, value FROM bonus_pronos WHERE type = ?').all(type);
+        const qualifiedLower = qualifiedTeams.map(t => t.trim().toLowerCase());
+        for (const b of bonusGroup) {
+          const pts = qualifiedLower.includes(b.value.trim().toLowerCase()) ? 30 : 0;
+          update.run(pts, b.id);
+        }
+      }
+    }
+  })();
+
+  rankingCache.invalidate();
+}
+
+module.exports = { calculerPoints, calculerPointsBase, resoudreChallenges, resoudreBonusPronos };

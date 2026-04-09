@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccount, getNotifSettings, updateNotifDelay, getFriendRanking } from '../api'
-import { t } from '../i18n'
+import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccount, getNotifSettings, updateNotifDelay, getFriendRanking, deleteAccount, getUserHistory } from '../api'
+import { t, splitTeam, phaseLabel } from '../i18n'
 import AvatarInitials from '../components/AvatarInitials'
 import { ProfileSkeleton } from '../components/Skeleton'
 
@@ -30,15 +30,21 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
   const [secureError, setSecureError] = useState('')
   const [secureLoading, setSecureLoading] = useState(false)
   const [friendRanking, setFriendRanking] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmPseudo, setDeleteConfirmPseudo] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   useEffect(() => {
     getUser(userId)
       .then(data => { setUser(data) })
-      .catch(() => {})
+      .catch(err => console.warn('[Profil] Erreur chargement user:', err))
       .finally(() => setLoading(false))
     getFriendRanking(userId)
-      .then(data => { if (Array.isArray(data) && data.length > 1) setFriendRanking(data) })
-      .catch(() => {})
+      .then(data => {
+        const list = data.ranking ?? data
+        if (Array.isArray(list) && list.length > 1) setFriendRanking(list)
+      })
+      .catch(err => console.warn('[Profil] Erreur chargement ranking amis:', err))
   }, [userId])
 
   // Vérifie l'état des notifications au montage
@@ -150,6 +156,9 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
           <p className="text-[11px] text-surface-400 dark:text-surface-500 italic">{t(lang, getVibeKey())}</p>
         </div>
       )}
+
+      {/* Historique de mes pronos */}
+      <PronoHistory userId={userId} lang={lang} />
 
       {/* Mini classement amis */}
       {friendRanking && <MiniRankingAmis ranking={friendRanking} userId={userId} lang={lang} />}
@@ -279,6 +288,51 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
         {t(lang, 'logout')}
       </button>
 
+      {/* Supprimer mon compte */}
+      {!showDeleteConfirm ? (
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="w-full py-3 rounded-xl bg-surface-100 dark:bg-surface-800 active:scale-[0.98] text-surface-400 dark:text-surface-500 font-medium text-xs transition-all"
+        >
+          {t(lang, 'deleteAccount')}
+        </button>
+      ) : (
+        <div className="w-full flex flex-col gap-3 p-4 rounded-xl bg-result-miss/5 border border-result-miss/20">
+          <p className="text-xs text-result-miss font-medium">{t(lang, 'deleteAccountConfirm')}</p>
+          <p className="text-xs text-surface-500 dark:text-surface-400">{t(lang, 'deleteAccountTypePseudo')}</p>
+          <input
+            type="text"
+            value={deleteConfirmPseudo}
+            onChange={e => setDeleteConfirmPseudo(e.target.value)}
+            placeholder={user.pseudo}
+            className="w-full px-3 py-2 rounded-lg border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-result-miss"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmPseudo('') }}
+              className="flex-1 py-2 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300 text-xs font-semibold"
+            >
+              {t(lang, 'cancel')}
+            </button>
+            <button
+              disabled={deleteConfirmPseudo !== user.pseudo || deleteLoading}
+              onClick={async () => {
+                setDeleteLoading(true)
+                const res = await deleteAccount({ user_id: userId, confirm_pseudo: deleteConfirmPseudo })
+                if (res.error) { setDeleteLoading(false); return }
+                localStorage.removeItem('score26_user_id')
+                localStorage.removeItem('score26_pseudo')
+                localStorage.removeItem('score26_token')
+                window.location.reload()
+              }}
+              className="flex-1 py-2 rounded-lg bg-result-miss text-white text-xs font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {deleteLoading ? <span className="spinner-btn" /> : t(lang, 'deleteAccount')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Lien politique de confidentialité */}
       <a
         href="/privacy.html"
@@ -381,6 +435,103 @@ function StatBlock({ value, label, color, bg }) {
     <div className={`flex flex-col items-center gap-1 py-3 rounded-xl ${bg}`}>
       <span className={`font-display text-xl font-bold tabular-nums ${color}`}>{value}</span>
       <span className="text-[10px] font-medium text-surface-500 dark:text-surface-400 text-center leading-tight">{label}</span>
+    </div>
+  )
+}
+
+function PronoHistory({ userId, lang }) {
+  const [open, setOpen] = useState(false)
+  const [pronos, setPronos] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [phase, setPhase] = useState('')
+  const [result, setResult] = useState('')
+
+  function load(p, r) {
+    setLoading(true)
+    getUserHistory(userId, { phase: p || undefined, result: r || undefined })
+      .then(data => { if (Array.isArray(data)) setPronos(data) })
+      .catch(err => console.warn('[Profil] Erreur historique:', err))
+      .finally(() => setLoading(false))
+  }
+
+  function toggle() {
+    const willOpen = !open
+    setOpen(willOpen)
+    if (willOpen && pronos.length === 0) load(phase, result)
+  }
+
+  function changePhase(p) { setPhase(p); load(p, result) }
+  function changeResult(r) { setResult(r); load(phase, r) }
+
+  const phases = [
+    { value: '', label: t(lang, 'allPhases') },
+    { value: 'groupe', label: t(lang, 'groupLabel') },
+    { value: '8e', label: '16e' },
+    { value: '4e', label: '1/4' },
+    { value: 'demi', label: '1/2' },
+    { value: 'finale', label: 'Finale' },
+  ]
+  const results = [
+    { value: '', label: t(lang, 'allResults') },
+    { value: 'exact', label: t(lang, 'filterExact') },
+    { value: 'good', label: t(lang, 'filterGood') },
+    { value: 'miss', label: t(lang, 'filterMiss') },
+  ]
+
+  return (
+    <div className="w-full rounded-xl bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-800/60 overflow-hidden">
+      <button onClick={toggle} className="w-full px-4 py-3 flex items-center justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <span className="text-xs font-semibold text-surface-700 dark:text-surface-300">{t(lang, 'myHistory')}</span>
+        <span className={`text-surface-400 text-xs transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-3">
+          {/* Filtres */}
+          <div className="flex gap-1.5 mb-2 flex-wrap">
+            {phases.map(p => (
+              <button key={p.value} onClick={() => changePhase(p.value)}
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${phase === p.value ? 'bg-accent text-surface-950' : 'bg-surface-200 dark:bg-surface-800 text-surface-500 dark:text-surface-400'}`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5 mb-3">
+            {results.map(r => (
+              <button key={r.value} onClick={() => changeResult(r.value)}
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${result === r.value ? 'bg-accent text-surface-950' : 'bg-surface-200 dark:bg-surface-800 text-surface-500 dark:text-surface-400'}`}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          {loading && <div className="flex justify-center py-4"><span className="spinner-btn" /></div>}
+
+          {!loading && pronos.length === 0 && (
+            <p className="text-center text-surface-400 text-xs py-4">{t(lang, 'noHistoryYet')}</p>
+          )}
+
+          {!loading && pronos.length > 0 && (
+            <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+              {pronos.map((p, i) => {
+                const isExact = p.score_predit_a === p.score_reel_a && p.score_predit_b === p.score_reel_b
+                const isGood = !isExact && p.points_obtenus >= 20
+                const color = isExact ? 'border-l-result-exact' : isGood ? 'border-l-accent' : 'border-l-result-miss'
+                const a = splitTeam(p.equipe_a, lang)
+                const b = splitTeam(p.equipe_b, lang)
+                return (
+                  <div key={i} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white dark:bg-surface-800 border-l-2 ${color}`}>
+                    <span className="text-[11px] text-surface-500 truncate flex-1">{a.flag} {a.name} {p.score_reel_a}-{p.score_reel_b} {b.name} {b.flag}</span>
+                    <span className="text-[10px] text-surface-400 tabular-nums">{p.score_predit_a}-{p.score_predit_b}</span>
+                    <span className={`text-[10px] font-bold tabular-nums ${isExact ? 'text-result-exact' : isGood ? 'text-accent' : 'text-result-miss'}`}>
+                      +{p.points_obtenus}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import './App.css'
 import Header from './components/Header'
 import Navbar from './components/Navbar'
@@ -6,8 +6,9 @@ import OfflineBanner from './components/OfflineBanner'
 import Onboarding from './pages/Onboarding'
 import MatchsAvenir from './pages/MatchsAvenir'
 import MatchsPasses from './pages/MatchsPasses'
-import Profil from './pages/Profil'
-import Amis from './pages/Amis'
+
+const Profil = lazy(() => import('./pages/Profil'))
+const Amis   = lazy(() => import('./pages/Amis'))
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import { getMatchs, getUser } from './api'
@@ -83,10 +84,10 @@ export default function App() {
     if (!userId) return
     getMatchs(userId).then(data => {
       if (!data.error && Array.isArray(data)) setPrefetchedMatchs(data)
-    }).catch(() => {})
+    }).catch(err => console.warn('[App] Erreur prefetch matchs:', err))
     getUser(userId).then(data => {
       if (data.friend_code) setFriendCode(data.friend_code)
-    }).catch(() => {})
+    }).catch(err => console.warn('[App] Erreur prefetch user:', err))
     // Si deep-link en attente, naviguer vers amis
     if (deepLink) setPage('amis')
   }, [userId])
@@ -163,8 +164,10 @@ export default function App() {
       <main className="pb-nav px-4 pt-3 overflow-hidden">
         {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} initialData={prefetchedMatchs} /></div>}
         {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} initialData={prefetchedMatchs} /></div>}
-        {page === 'amis'   && <div key="amis"   className={`page-slide-${slideDir}`}><Amis         userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink} onDeepLinkHandled={() => setDeepLink(null)} /></div>}
-        {page === 'profil' && <div key="profil" className={`page-slide-${slideDir}`}><Profil       userId={userId} lang={lang} friendCode={friendCode} theme={theme} onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} /></div>}
+        <Suspense fallback={<div className="flex justify-center py-20 text-surface-400">…</div>}>
+          {page === 'amis'   && <div key="amis"   className={`page-slide-${slideDir}`}><Amis         userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink} onDeepLinkHandled={() => setDeepLink(null)} /></div>}
+          {page === 'profil' && <div key="profil" className={`page-slide-${slideDir}`}><Profil       userId={userId} lang={lang} friendCode={friendCode} theme={theme} onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} /></div>}
+        </Suspense>
       </main>
 
       <Navbar page={page} onNavigate={navigateTo} lang={lang} />

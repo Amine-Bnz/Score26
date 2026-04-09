@@ -33,6 +33,22 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
     setAVenir(prev => prev.map(m => m.id === matchId ? { ...m, score_predit_a: a, score_predit_b: b } : m))
   }
 
+  // Bracket click → expand group if collapsed + scroll to match card
+  function scrollToMatch(matchId) {
+    const match = allMatchs.find(m => m.id === matchId)
+    if (!match) return
+    const group = match.phase === 'groupe' ? (match.groupe ?? '?') : (match.phase ?? '?')
+    setCollapsedGroups(prev => ({ ...prev, [group]: false }))
+    setTimeout(() => {
+      const el = document.getElementById(`match-${matchId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('ring-2', 'ring-accent')
+        setTimeout(() => el.classList.remove('ring-2', 'ring-accent'), 2000)
+      }
+    }, 100)
+  }
+
   function applyData(data) {
     if (data.error || !Array.isArray(data)) { setLoading(false); return }
     setAllMatchs(data)
@@ -86,7 +102,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
             {t(lang, 'liveSection')}
           </h2>
           {enCours.map((match, i) => (
-            <div key={match.id} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>
+            <div key={match.id} id={`match-${match.id}`} className="card-stagger" style={{ animationDelay: `${i * 50}ms` }}>
               <MatchCardActive match={match} lang={lang} userId={userId} />
             </div>
           ))}
@@ -195,7 +211,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
               </span>
             </button>
             {!collapsedGroups[groupe] && matchsGroupe.map((match, i) => (
-              <div key={match.id} className="card-stagger mb-2.5" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
+              <div key={match.id} id={`match-${match.id}`} className="card-stagger mb-2.5" style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }}>
                 <MatchCardAvenir match={match} userId={userId} lang={lang} isOnline={isOnline} highlight={match.id === nextId} lastChance={lastChanceIds.has(match.id)} onPronoSaved={handlePronoSaved} />
               </div>
             ))}
@@ -204,7 +220,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
       })()}
 
       {/* Bracket phases finales */}
-      <Bracket matchs={allMatchs} lang={lang} />
+      <Bracket matchs={allMatchs} lang={lang} onMatchClick={scrollToMatch} />
     </div>
   )
 }

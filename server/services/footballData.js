@@ -125,15 +125,17 @@ async function syncCalendrier(db) {
 // ── syncResultats ─────────────────────────────────────────────────────────────
 // Récupère les matchs terminés et met à jour les scores en base.
 // Déclenche le calcul des points automatiquement via la fonction calculerPoints.
-async function syncResultats(db, { calculerPoints, envoyerNotifResultat, resoudreChallenges }) {
+async function syncResultats(db, { calculerPoints, envoyerNotifResultat, resoudreChallenges, envoyerRecapJournee }) {
   const data = await fetchFD('/competitions/WC/matches?season=2026&status=FINISHED');
   const matchsTermines = data.matches ?? [];
 
   let mis_a_jour = 0;
+  const journeesAVerifier = new Set();
+
   for (const m of matchsTermines) {
     // Ne traiter que les matchs qu'on a liés via api_match_id
     const match = db.prepare(
-      'SELECT id, score_reel_a FROM matchs WHERE api_match_id = ?'
+      'SELECT id, score_reel_a, journee FROM matchs WHERE api_match_id = ?'
     ).get(m.id);
 
     if (!match) continue;
@@ -152,8 +154,16 @@ async function syncResultats(db, { calculerPoints, envoyerNotifResultat, resoudr
     if (envoyerNotifResultat) {
       envoyerNotifResultat(db, match.id).catch(e => logger.error({ err: e }, '[sync résultats] erreur notif résultat'));
     }
+    if (match.journee) journeesAVerifier.add(match.journee);
     mis_a_jour++;
     logger.info(`[sync résultats] Match ${match.id} terminé : ${scoreA}-${scoreB}`);
+  }
+
+  // Vérifier si des journées sont complètement terminées → envoyer récap
+  if (envoyerRecapJournee) {
+    for (const journee of journeesAVerifier) {
+      envoyerRecapJournee(db, journee).catch(e => logger.error({ err: e }, `[sync résultats] erreur récap journée ${journee}`));
+    }
   }
 
   logger.info(`[sync résultats] ${mis_a_jour} nouveau(x) résultat(s) enregistré(s)`);

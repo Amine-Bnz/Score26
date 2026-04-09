@@ -9,10 +9,13 @@ function createTestDb() {
 
   db.exec(`
     CREATE TABLE users (
-      id          TEXT PRIMARY KEY,
-      pseudo      TEXT UNIQUE NOT NULL,
-      avatar_seed TEXT NOT NULL,
-      created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+      id            TEXT PRIMARY KEY,
+      pseudo        TEXT UNIQUE NOT NULL,
+      avatar_seed   TEXT NOT NULL,
+      friend_code   TEXT UNIQUE,
+      email         TEXT,
+      password_hash TEXT,
+      created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE matchs (
@@ -29,7 +32,10 @@ function createTestDb() {
       api_match_id     INTEGER,
       score_live_a     INTEGER,
       score_live_b     INTEGER,
-      minute_live      INTEGER
+      minute_live      INTEGER,
+      is_featured      INTEGER NOT NULL DEFAULT 0,
+      score_reel_90_a  INTEGER,
+      score_reel_90_b  INTEGER
     );
 
     CREATE TABLE pronos (
@@ -40,9 +46,29 @@ function createTestDb() {
       score_predit_b  INTEGER NOT NULL,
       points_obtenus  INTEGER,
       verrouille      INTEGER NOT NULL DEFAULT 0,
+      score_predit_90_a INTEGER,
+      score_predit_90_b INTEGER,
       UNIQUE(user_id, match_id)
     );
+
+    CREATE TABLE challenges (
+      id             TEXT PRIMARY KEY,
+      challenger_id  TEXT NOT NULL REFERENCES users(id),
+      opponent_id    TEXT NOT NULL REFERENCES users(id),
+      match_id       INTEGER NOT NULL REFERENCES matchs(id),
+      status         TEXT NOT NULL DEFAULT 'pending',
+      winner_id      TEXT,
+      created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  // Fonction utilitaire pour générer un friend_code
+  db.generateFriendCode = function() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  };
 
   return db;
 }

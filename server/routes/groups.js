@@ -96,13 +96,28 @@ router.delete('/:groupId/leave', (req, res) => {
     return res.status(400).json({ error: 'user_id requis.' });
   }
 
-  db.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ?').run(groupId, user_id);
-
-  // Si le groupe est vide, le supprimer
-  const remaining = db.prepare('SELECT COUNT(*) AS n FROM group_members WHERE group_id = ?').get(groupId);
-  if (remaining.n === 0) {
-    db.prepare('DELETE FROM groups_ WHERE id = ?').run(groupId);
+  const group = db.prepare('SELECT owner_id FROM groups_ WHERE id = ?').get(groupId);
+  if (!group) {
+    return res.status(404).json({ error: 'Groupe introuvable.' });
   }
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ?').run(groupId, user_id);
+
+    const remaining = db.prepare('SELECT COUNT(*) AS n FROM group_members WHERE group_id = ?').get(groupId);
+    if (remaining.n === 0) {
+      // Groupe vide → supprimer
+      db.prepare('DELETE FROM groups_ WHERE id = ?').run(groupId);
+    } else if (group.owner_id === user_id) {
+      // L'owner quitte → transférer au membre le plus ancien
+      const newOwner = db.prepare(
+        'SELECT user_id FROM group_members WHERE group_id = ? ORDER BY joined_at ASC LIMIT 1'
+      ).get(groupId);
+      if (newOwner) {
+        db.prepare('UPDATE groups_ SET owner_id = ? WHERE id = ?').run(newOwner.user_id, groupId);
+      }
+    }
+  })();
 
   return res.json({ ok: true });
 });

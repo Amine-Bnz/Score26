@@ -63,6 +63,24 @@ export async function getUser(id) {
   return handleResponse(res)
 }
 
+export async function getUserHistory(userId, { phase, result } = {}) {
+  const params = new URLSearchParams()
+  if (phase) params.set('phase', phase)
+  if (result) params.set('result', result)
+  const q = params.toString()
+  const res = await fetch(`${BASE}/users/${userId}/history${q ? '?' + q : ''}`)
+  return handleResponse(res)
+}
+
+export async function deleteAccount({ user_id, confirm_pseudo }) {
+  const res = await fetch(`${BASE}/users/${user_id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirm_pseudo }),
+  })
+  return handleResponse(res)
+}
+
 export async function getMatchs(userId) {
   const res = await fetch(`${BASE}/matchs?user_id=${userId}`)
   return handleResponse(res)

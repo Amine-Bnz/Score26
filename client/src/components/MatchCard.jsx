@@ -85,8 +85,11 @@ function TeamBlock({ fullName, lang }) {
 
 // ── Card matchs à venir ──────────────────────────────────────────────────────
 export function MatchCardAvenir({ match, userId, lang, isOnline = true, highlight = false, lastChance = false, onPronoSaved }) {
+  const isKO = match.phase && match.phase !== 'groupe'
   const [scoreA, setScoreA] = useState(match.score_predit_a ?? '')
   const [scoreB, setScoreB] = useState(match.score_predit_b ?? '')
+  const [score90A, setScore90A] = useState(match.score_predit_90_a ?? '')
+  const [score90B, setScore90B] = useState(match.score_predit_90_b ?? '')
   const [saved,  setSaved]  = useState(false)  // false | 'saving' | 'ok' | 'error'
   const debounceRef = useRef(null)
   const savedTimerRef = useRef(null)
@@ -112,6 +115,11 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
       const b = isA ? autre : parsed
       if (a === '' || b === '') return
       const pronoData = { user_id: userId, match_id: match.id, score_predit_a: a, score_predit_b: b }
+      // Inclure score 90min si KO et renseigné
+      if (isKO && score90A !== '' && score90B !== '') {
+        pronoData.score_predit_90_a = score90A
+        pronoData.score_predit_90_b = score90B
+      }
       if (!isOnline) {
         // Sauvegarder en file offline
         queueProno(pronoData)
@@ -157,12 +165,12 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
 
   return (
     <div className={`bg-white dark:bg-surface-900 rounded-xl p-4 transition-shadow
-      ${lastChance ? 'ring-1 ring-gold/50' : highlight ? 'ring-1 ring-accent/30' : 'border border-surface-200 dark:border-surface-800/60'}`}>
+      ${match.is_featured === 1 ? 'ring-2 ring-accent/40' : lastChance ? 'ring-1 ring-gold/50' : highlight ? 'ring-1 ring-accent/30' : 'border border-surface-200 dark:border-surface-800/60'}`}>
       {/* Date + verrou + badges */}
       <div className="flex items-center justify-center gap-2 mb-3">
         {match.is_featured === 1 && (
-          <span className="text-[10px] font-bold bg-accent/15 text-accent px-2 py-0.5 rounded-full">
-            {t(lang, 'matchOfDayShort')}
+          <span className="text-[10px] font-bold bg-accent/20 text-accent px-2.5 py-0.5 rounded-full flex items-center gap-1">
+            <span>★</span> {t(lang, 'matchOfDay')} · {t(lang, 'matchOfDayShort')}
           </span>
         )}
         {lastChance && (
@@ -225,6 +233,41 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
 
         <TeamBlock fullName={match.equipe_b} lang={lang} />
       </div>
+
+      {/* Score 90min (phases KO uniquement) */}
+      {isKO && !isVerrouille && (
+        <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-surface-100 dark:border-surface-800/60">
+          <span className="text-[10px] text-surface-400 dark:text-surface-500 mr-1">90&apos;</span>
+          <input
+            type="text" inputMode="numeric" pattern="[0-9]*"
+            value={score90A} disabled={isVerrouille}
+            placeholder="–"
+            onFocus={e => e.target.select()}
+            onChange={e => {
+              const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
+              const p = v === '' ? '' : Math.max(0, Math.min(99, parseInt(v) || 0))
+              setScore90A(p)
+            }}
+            className="w-8 h-7 rounded border text-center text-xs font-bold bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300 border-surface-200 dark:border-surface-700 focus:outline-none focus:border-accent"
+          />
+          <span className="text-surface-300 dark:text-surface-600 text-[10px]">–</span>
+          <input
+            type="text" inputMode="numeric" pattern="[0-9]*"
+            value={score90B} disabled={isVerrouille}
+            placeholder="–"
+            onFocus={e => e.target.select()}
+            onChange={e => {
+              const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
+              const p = v === '' ? '' : Math.max(0, Math.min(99, parseInt(v) || 0))
+              setScore90B(p)
+            }}
+            className="w-8 h-7 rounded border text-center text-xs font-bold bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300 border-surface-200 dark:border-surface-700 focus:outline-none focus:border-accent"
+          />
+          <span className="text-[10px] text-surface-400 dark:text-surface-500 ml-1">
+            {lang === 'fr' ? '(si prolongation)' : '(if extra time)'}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -236,8 +279,16 @@ export function MatchCardActive({ match, lang, userId }) {
   const minute = match.minute_live
 
   return (
-    <div className="live-ring bg-white dark:bg-surface-900 rounded-xl overflow-hidden">
+    <div className={`live-ring bg-white dark:bg-surface-900 rounded-xl overflow-hidden ${match.is_featured === 1 ? 'ring-2 ring-accent/40' : ''}`}>
       <div className="p-4">
+        {/* Badge match du jour */}
+        {match.is_featured === 1 && (
+          <div className="flex justify-center mb-2">
+            <span className="text-[10px] font-bold bg-accent/20 text-accent px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span>★</span> {t(lang, 'matchOfDay')} · {t(lang, 'matchOfDayShort')}
+            </span>
+          </div>
+        )}
         {/* Badge LIVE + minute */}
         <div className="flex items-center justify-center gap-2 mb-3">
           <span className="w-1.5 h-1.5 rounded-full bg-result-miss animate-pulse flex-shrink-0" />
@@ -376,8 +427,8 @@ export function MatchCardPasse({ match, lang, userId }) {
         {/* Badge match du jour */}
         {match.is_featured === 1 && (
           <div className="flex justify-center mb-2">
-            <span className="text-[10px] font-bold bg-accent/15 text-accent px-2 py-0.5 rounded-full">
-              {t(lang, 'matchOfDayShort')}
+            <span className="text-[10px] font-bold bg-accent/20 text-accent px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span>★</span> {t(lang, 'matchOfDay')} · {t(lang, 'matchOfDayShort')}
             </span>
           </div>
         )}

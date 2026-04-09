@@ -5,6 +5,9 @@ const rateLimit = require('express-rate-limit');
 const router   = express.Router();
 const db       = require('../database');
 
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET est requis en production. Définir la variable d\'environnement JWT_SECRET.');
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'score26-dev-secret-change-me';
 const JWT_EXPIRES = '30d';
 
