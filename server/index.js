@@ -94,7 +94,7 @@ const path = require('path');
 const clientDist = path.join(__dirname, 'public');
 app.use(express.static(clientDist));
 // Fallback SPA : toute route non-API renvoie index.html (gère /invite/CODE, /group/CODE, etc.)
-app.get('*', (req, res, next) => {
+app.get('/{*path}', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
   res.sendFile(path.join(clientDist, 'index.html'));
 });
