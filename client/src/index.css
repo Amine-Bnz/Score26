@@ -5,11 +5,11 @@
 /* ── Transitions de page ─────────────────────────────── */
 @keyframes slideFromRight {
   from { opacity: 0; transform: translateX(20px); }
-  to   { opacity: 1; transform: translateX(0);    }
+  to   { opacity: 1; }
 }
 @keyframes slideFromLeft {
   from { opacity: 0; transform: translateX(-20px); }
-  to   { opacity: 1; transform: translateX(0);     }
+  to   { opacity: 1; }
 }
 .page-slide-right {
   animation: slideFromRight 0.2s ease-out both;
@@ -21,7 +21,7 @@
 /* ── Fade-in ─────────────────────────────────────────── */
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.97); }
-  to   { opacity: 1; transform: scale(1);    }
+  to   { opacity: 1; }
 }
 .animate-fade-in {
   animation: fadeIn 0.25s ease-out both;
@@ -30,7 +30,7 @@
 /* ── Cards stagger ───────────────────────────────────── */
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0);   }
+  to   { opacity: 1; }
 }
 .card-stagger {
   animation: cardIn 0.2s ease-out both;
