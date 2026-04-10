@@ -34,12 +34,18 @@ app.use(helmet({
 app.use(compression());
 
 // CORS : ouvert en dev, restreint au domaine en prod via CORS_ORIGIN dans .env
-// En production sans CORS_ORIGIN configuré → warning et refus par défaut
-const corsOrigin = process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? false : '*');
+// CORS_ORIGIN peut contenir plusieurs origines séparées par des virgules
+const corsRaw = process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? '' : '*');
 if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
   logger.warn('CORS_ORIGIN non configuré en production — requêtes cross-origin refusées');
 }
-app.use(cors({ origin: corsOrigin }));
+const corsAllowed = corsRaw === '*' ? '*' : corsRaw.split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({
+  origin: corsAllowed === '*' ? '*' : (origin, cb) => {
+    if (!origin || corsAllowed.includes(origin)) cb(null, true);
+    else cb(new Error('Not allowed by CORS'));
+  }
+}));
 
 app.use(express.json());
 
