@@ -193,7 +193,7 @@ export default function App() {
         synced={synced}
       />
 
-      <main className="pb-nav px-4 pt-3 overflow-hidden">
+      <main className="pb-nav px-4 pt-3 overflow-x-hidden">
         {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} initialData={prefetchedMatchs} /></div>}
         {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} initialData={prefetchedMatchs} /></div>}
         <Suspense fallback={<div className="flex justify-center py-20 text-surface-400">…</div>}>
