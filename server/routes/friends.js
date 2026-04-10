@@ -57,23 +57,45 @@ router.get('/:userId/ranking', (req, res) => {
   return res.json({ ranking, page, limit, total, hasMore: offset + ranking.length < total });
 });
 
-// GET /api/friends/:userId/pronos/:matchId — pronos des amis pour un match
+// GET /api/friends/:userId/pronos/:matchId — pronos des amis pour un match (+ réactions)
 router.get('/:userId/pronos/:matchId', (req, res) => {
   const { userId, matchId } = req.params;
+  const mid = Number(matchId);
 
-  const match = db.prepare('SELECT statut FROM matchs WHERE id = ?').get(Number(matchId));
+  const match = db.prepare('SELECT statut FROM matchs WHERE id = ?').get(mid);
   if (!match || match.statut === 'a_venir') {
     return res.status(403).json({ error: 'Pronos non visibles avant le coup d\'envoi.' });
   }
 
   const pronos = db.prepare(`
-    SELECT u.pseudo, u.avatar_seed, p.score_predit_a, p.score_predit_b, p.points_obtenus
+    SELECT u.id as user_id, u.pseudo, u.avatar_seed,
+           p.score_predit_a, p.score_predit_b, p.points_obtenus,
+           pr.emoji as my_reaction
     FROM friendships f
     JOIN users u ON u.id = f.friend_id
     JOIN pronos p ON p.user_id = u.id AND p.match_id = ?
+    LEFT JOIN prono_reactions pr ON pr.target_user_id = u.id AND pr.match_id = ? AND pr.reactor_id = ?
     WHERE f.user_id = ?
     ORDER BY u.pseudo
-  `).all(Number(matchId), userId);
+  `).all(mid, mid, userId, userId);
+
+  // Aggregate reaction counts per friend prono
+  const counts = db.prepare(`
+    SELECT target_user_id, emoji, COUNT(*) as cnt
+    FROM prono_reactions
+    WHERE match_id = ? AND target_user_id IN (SELECT friend_id FROM friendships WHERE user_id = ?)
+    GROUP BY target_user_id, emoji
+  `).all(mid, userId);
+
+  const countMap = {};
+  for (const c of counts) {
+    if (!countMap[c.target_user_id]) countMap[c.target_user_id] = {};
+    countMap[c.target_user_id][c.emoji] = c.cnt;
+  }
+
+  for (const p of pronos) {
+    p.reactions = countMap[p.user_id] || {};
+  }
 
   return res.json(pronos);
 });

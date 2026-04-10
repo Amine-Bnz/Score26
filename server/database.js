@@ -178,6 +178,18 @@ db.exec(`
   );
 `);
 
+// Table v5 : réactions emoji sur les pronos des amis
+db.exec(`
+  CREATE TABLE IF NOT EXISTS prono_reactions (
+    reactor_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    match_id       INTEGER NOT NULL REFERENCES matchs(id) ON DELETE CASCADE,
+    emoji          TEXT NOT NULL,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (reactor_id, target_user_id, match_id)
+  );
+`);
+
 db.generateFriendCode = generateFriendCode;
 
 module.exports = db;

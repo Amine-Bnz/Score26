@@ -3,6 +3,7 @@ import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccou
 import { t, splitTeam, phaseLabel } from '../i18n'
 import AvatarInitials from '../components/AvatarInitials'
 import { ProfileSkeleton } from '../components/Skeleton'
+import { QRCodeSVG } from 'qrcode.react'
 
 // Convertit la clé VAPID base64url en Uint8Array (requis par pushManager.subscribe)
 function urlBase64ToUint8Array(base64String) {
@@ -193,6 +194,21 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
               {t(lang, 'shareInviteLink')}
             </button>
           )}
+          {/* QR code deep link */}
+          <div className="flex justify-center pt-2">
+            <div className="bg-white p-2 rounded-lg">
+              <QRCodeSVG
+                value={`${window.location.origin}/invite/${friendCode}`}
+                size={120}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#1a1a2e"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-surface-400 text-center">
+            {lang === 'fr' ? 'Scanne pour m\'ajouter' : 'Scan to add me'}
+          </p>
         </div>
       )}
 

@@ -153,6 +153,15 @@ export async function getFriendPronos(userId, matchId) {
   return handleResponse(res)
 }
 
+export async function toggleReaction(reactorId, targetUserId, matchId, emoji) {
+  const res = await fetch(`${BASE}/reactions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reactor_id: reactorId, target_user_id: targetUserId, match_id: matchId, emoji }),
+  })
+  return handleResponse(res)
+}
+
 export async function getFriendHistory(userId, friendId) {
   const res = await fetch(`${BASE}/friends/${userId}/history/${friendId}`)
   return handleResponse(res)

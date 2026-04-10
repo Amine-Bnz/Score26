@@ -60,6 +60,22 @@ function createTestDb() {
       winner_id      TEXT,
       created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE friendships (
+      user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      friend_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, friend_id)
+    );
+
+    CREATE TABLE prono_reactions (
+      reactor_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      target_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      match_id       INTEGER NOT NULL REFERENCES matchs(id) ON DELETE CASCADE,
+      emoji          TEXT NOT NULL,
+      created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (reactor_id, target_user_id, match_id)
+    );
   `);
 
   // Fonction utilitaire pour générer un friend_code

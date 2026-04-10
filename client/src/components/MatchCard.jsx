@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import confetti from 'canvas-confetti'
-import { upsertProno, getFriendPronos } from '../api'
+import { upsertProno, getFriendPronos, toggleReaction } from '../api'
 import { queueProno } from '../hooks/useOfflineSync'
 import { t, splitTeam } from '../i18n'
 import { ChevronIcon, FriendsIcon } from './Icons'
@@ -38,13 +38,14 @@ function AnimatedCount({ value }) {
   return <>{count}</>
 }
 
-// Formate la date : "15 JUN · 21:00"
+// Formate la date : "15 JUN · 21:00 (heure locale)"
 function formatDate(dateStr, lang) {
   const d = new Date(dateStr)
   const day = d.getDate().toString().padStart(2, '0')
   const month = d.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US', { month: 'short' }).toUpperCase()
   const time = d.toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-  return `${day} ${month} · ${time}`
+  const tzHint = lang === 'fr' ? '(h. locale)' : '(local)'
+  return `${day} ${month} · ${time} ${tzHint}`
 }
 
 // Countdown dynamique : "dans 2h30" si <24h, sinon date statique
@@ -344,6 +345,8 @@ export function MatchCardActive({ match, lang, userId }) {
 }
 
 // ── Section pronos amis (lazy-loaded, expandable) ───────────────────────────��
+const REACTION_EMOJIS = ['🔥', '😂', '😮', '💀']
+
 function FriendPronosSection({ matchId, userId, lang }) {
   const [open, setOpen] = useState(false)
   const [pronos, setPronos] = useState(null)
@@ -361,6 +364,28 @@ function FriendPronosSection({ matchId, userId, lang }) {
     }
   }
 
+  async function handleReaction(targetUserId, emoji) {
+    const res = await toggleReaction(userId, targetUserId, matchId, emoji)
+    if (res.error) return
+    // Optimistic update
+    setPronos(prev => prev.map(p => {
+      if (p.user_id !== targetUserId) return p
+      const reactions = { ...p.reactions }
+      if (res.action === 'removed') {
+        if (reactions[emoji]) reactions[emoji]--
+        if (reactions[emoji] <= 0) delete reactions[emoji]
+        return { ...p, my_reaction: null, reactions }
+      }
+      // added or updated
+      if (p.my_reaction && p.my_reaction !== emoji && reactions[p.my_reaction]) {
+        reactions[p.my_reaction]--
+        if (reactions[p.my_reaction] <= 0) delete reactions[p.my_reaction]
+      }
+      reactions[emoji] = (reactions[emoji] || 0) + (p.my_reaction === emoji ? 0 : 1)
+      return { ...p, my_reaction: emoji, reactions }
+    }))
+  }
+
   return (
     <div className="mt-2 pt-2 border-t border-surface-100 dark:border-surface-800/60">
       <button onClick={toggle} className="flex items-center gap-1.5 w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
@@ -369,22 +394,44 @@ function FriendPronosSection({ matchId, userId, lang }) {
         <ChevronIcon className={`w-3 h-3 ml-auto text-surface-400 dark:text-surface-500 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
       </button>
       {open && (
-        <div className="mt-2 flex flex-col gap-1.5">
+        <div className="mt-2 flex flex-col gap-2">
           {loading && <span className="spinner-btn text-surface-400" style={{ width: 12, height: 12, borderWidth: 1.5 }} />}
           {pronos?.length === 0 && <span className="text-[10px] text-surface-400 dark:text-surface-500">{lang === 'fr' ? 'Personne n\'a joué ce match' : 'No one played this match'}</span>}
           {pronos?.map(p => (
-            <div key={p.pseudo} className="flex items-center gap-2">
-              <span className="text-[11px] text-surface-500 dark:text-surface-400 truncate flex-1">{p.pseudo}</span>
-              <span className="text-[11px] font-bold tabular-nums text-surface-600 dark:text-surface-300">
-                {p.score_predit_a} – {p.score_predit_b}
-              </span>
-              {p.points_obtenus != null && (
-                <span className={`text-[10px] font-semibold tabular-nums ${
-                  p.points_obtenus >= 50 ? 'text-result-exact' : p.points_obtenus >= 20 ? 'text-accent' : 'text-result-miss'
-                }`}>
-                  +{p.points_obtenus}
+            <div key={p.user_id} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-surface-500 dark:text-surface-400 truncate flex-1">{p.pseudo}</span>
+                <span className="text-[11px] font-bold tabular-nums text-surface-600 dark:text-surface-300">
+                  {p.score_predit_a} – {p.score_predit_b}
                 </span>
-              )}
+                {p.points_obtenus != null && (
+                  <span className={`text-[10px] font-semibold tabular-nums ${
+                    p.points_obtenus >= 50 ? 'text-result-exact' : p.points_obtenus >= 20 ? 'text-accent' : 'text-result-miss'
+                  }`}>
+                    +{p.points_obtenus}
+                  </span>
+                )}
+              </div>
+              {/* Emoji reactions */}
+              <div className="flex items-center gap-1">
+                {REACTION_EMOJIS.map(emoji => {
+                  const count = p.reactions?.[emoji] || 0
+                  const isMine = p.my_reaction === emoji
+                  return (
+                    <button
+                      key={emoji}
+                      onClick={(e) => { e.stopPropagation(); handleReaction(p.user_id, emoji) }}
+                      className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] transition-all active:scale-90
+                        ${isMine
+                          ? 'bg-accent/20 ring-1 ring-accent/40'
+                          : 'bg-surface-100 dark:bg-surface-800 hover:bg-surface-200 dark:hover:bg-surface-700'}`}
+                    >
+                      <span>{emoji}</span>
+                      {count > 0 && <span className="text-[9px] tabular-nums text-surface-500 dark:text-surface-400">{count}</span>}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           ))}
         </div>

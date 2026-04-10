@@ -122,12 +122,44 @@ export default function App() {
       return { msg: `${matchLabel} · ${tRandom(lang, 'resultToastMiss')} +${pts}`, type: 'miss' }
     })
 
+    // Son de notification in-app (Web Audio API)
+    function playNotifSound(type) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.type = 'sine'
+        // Tonalité selon le résultat
+        osc.frequency.value = type === 'exact' ? 880 : type === 'good' ? 660 : 440
+        gain.gain.setValueAtTime(0.15, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.4)
+        // Double bip pour un exact
+        if (type === 'exact') {
+          const osc2 = ctx.createOscillator()
+          const gain2 = ctx.createGain()
+          osc2.connect(gain2)
+          gain2.connect(ctx.destination)
+          osc2.type = 'sine'
+          osc2.frequency.value = 1100
+          gain2.gain.setValueAtTime(0.12, ctx.currentTime + 0.15)
+          gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+          osc2.start(ctx.currentTime + 0.15)
+          osc2.stop(ctx.currentTime + 0.5)
+        }
+      } catch { /* Audio non supporté — silencieux */ }
+    }
+
     // Afficher les toasts en séquence
     resultToastQueue.current = queue
     function showNext() {
       const next = resultToastQueue.current.shift()
       if (!next) { setResultToast(null); return }
       setResultToast(next)
+      playNotifSound(next.type)
       setTimeout(showNext, 3500)
     }
     showNext()

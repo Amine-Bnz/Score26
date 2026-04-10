@@ -4,6 +4,7 @@ import { t } from '../i18n'
 import AvatarInitials from '../components/AvatarInitials'
 import ChallengeCard from '../components/ChallengeCard'
 import { RankingRowSkeleton } from '../components/Skeleton'
+import { QRCodeSVG } from 'qrcode.react'
 
 export default function Amis({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   const [tab, setTab] = useState(() => {
@@ -493,16 +494,32 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
           </button>
         </div>
 
-        {/* Code d'invitation */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-100 dark:bg-surface-800">
-          <span className="text-xs text-surface-400">{t(lang, 'inviteCode')}</span>
-          <span className="font-mono font-bold tracking-widest text-accent flex-1">{selectedGroup.invite_code}</span>
-          <button
-            onClick={() => { navigator.clipboard?.writeText(selectedGroup.invite_code); showToast(t(lang, 'codeCopied')) }}
-            className="text-xs font-semibold px-2 py-1 rounded-lg bg-accent text-surface-950 active:scale-95 transition-transform"
-          >
-            {lang === 'fr' ? 'Copier' : 'Copy'}
-          </button>
+        {/* Code d'invitation + QR */}
+        <div className="flex flex-col gap-2 px-3 py-2 rounded-lg bg-surface-100 dark:bg-surface-800">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-surface-400">{t(lang, 'inviteCode')}</span>
+            <span className="font-mono font-bold tracking-widest text-accent flex-1">{selectedGroup.invite_code}</span>
+            <button
+              onClick={() => { navigator.clipboard?.writeText(selectedGroup.invite_code); showToast(t(lang, 'codeCopied')) }}
+              className="text-xs font-semibold px-2 py-1 rounded-lg bg-accent text-surface-950 active:scale-95 transition-transform"
+            >
+              {lang === 'fr' ? 'Copier' : 'Copy'}
+            </button>
+          </div>
+          <div className="flex justify-center py-1">
+            <div className="bg-white p-2 rounded-lg">
+              <QRCodeSVG
+                value={`${window.location.origin}/group/${selectedGroup.invite_code}`}
+                size={100}
+                level="M"
+                bgColor="#ffffff"
+                fgColor="#1a1a2e"
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-surface-400 text-center">
+            {lang === 'fr' ? 'Scanne pour rejoindre' : 'Scan to join'}
+          </p>
         </div>
 
         {groupLoading ? (

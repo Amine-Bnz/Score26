@@ -5,6 +5,7 @@ import { LastUpdated } from '../components/LastUpdated'
 import OnboardingTip from '../components/OnboardingTip'
 import BonusPronos from '../components/BonusPronos'
 import Bracket from '../components/Bracket'
+import TournamentEnded from '../components/TournamentEnded'
 import { MatchCardSkeleton } from '../components/Skeleton'
 import { ChevronIcon } from '../components/Icons'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
@@ -69,6 +70,10 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
     charger().then(markUpdated)
   }, [userId])
 
+  // Tournoi terminé : tous les matchs sont "termine", aucun à venir ni en cours
+  const isTournamentOver = !loading && allMatchs.length > 0 && aVenir.length === 0 && enCours.length === 0
+    && allMatchs.every(m => m.statut === 'termine')
+
   if (loading) {
     return (
       <div className="flex flex-col gap-3">
@@ -79,6 +84,8 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
 
   return (
     <div className="flex flex-col gap-3" {...touchHandlers}>
+      {/* Écran tournoi terminé */}
+      {isTournamentOver && <TournamentEnded userId={userId} lang={lang} />}
       {/* Overlay onboarding (premier lancement uniquement) */}
       <OnboardingTip lang={lang} />
 
