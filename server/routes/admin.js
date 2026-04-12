@@ -5,9 +5,9 @@ const { calculerPoints, resoudreChallenges, resoudreBonusPronos } = require('../
 const { runSeed } = require('../seed');
 const logger  = require('../logger');
 
-// Middleware — vérifie le token admin à chaque requête
+// Middleware — vérifie le token admin via header uniquement (S3: pas de token en URL)
 function checkToken(req, res, next) {
-  const token = req.query.token || req.headers['x-admin-token'];
+  const token = req.headers['x-admin-token'];
   const expected = process.env.ADMIN_TOKEN;
   if (!expected || expected === 'change_this_before_deploy' || token !== expected) {
     logger.warn({ ip: req.ip, method: req.method, path: req.path }, '[admin] Accès refusé');

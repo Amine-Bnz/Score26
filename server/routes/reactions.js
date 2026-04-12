@@ -1,15 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const { requireAuth } = require('../middleware/auth');
+const { UUID_REGEX } = require('../middleware/validate');
 
 const ALLOWED_EMOJIS = ['🔥', '😂', '😮', '💀'];
 
-// POST /api/reactions — toggle a reaction on a friend's prono
-router.post('/', (req, res) => {
-  const { reactor_id, target_user_id, match_id, emoji } = req.body;
+// POST /api/reactions — toggle a reaction on a friend's prono (auth requise)
+router.post('/', requireAuth, (req, res) => {
+  const reactor_id = req.userId;
+  const { target_user_id, match_id, emoji } = req.body;
 
-  if (!reactor_id || !target_user_id || !match_id || !emoji) {
-    return res.status(400).json({ error: 'Champs requis: reactor_id, target_user_id, match_id, emoji.' });
+  if (!target_user_id || !match_id || !emoji) {
+    return res.status(400).json({ error: 'Champs requis: target_user_id, match_id, emoji.' });
+  }
+  if (!UUID_REGEX.test(target_user_id)) {
+    return res.status(400).json({ error: 'Identifiant invalide.' });
   }
   if (reactor_id === target_user_id) {
     return res.status(400).json({ error: 'Tu ne peux pas réagir à ton propre prono.' });

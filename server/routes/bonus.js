@@ -1,6 +1,11 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
+const { requireAuth } = require('../middleware/auth');
+const { validateUUIDParam } = require('../middleware/validate');
+
+// S8: valider le format UUID sur le paramètre :userId
+router.param('userId', validateUUIDParam);
 
 // Types valides et points associés
 const BONUS_TYPES = {
@@ -15,12 +20,13 @@ router.get('/:userId', (req, res) => {
   return res.json(pronos);
 });
 
-// POST /api/bonus — sauvegarder un prono bonus
-router.post('/', (req, res) => {
-  const { user_id, type, value } = req.body;
+// POST /api/bonus — sauvegarder un prono bonus (auth requise)
+router.post('/', requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const { type, value } = req.body;
 
-  if (!user_id || !type || !value) {
-    return res.status(400).json({ error: 'user_id, type et value requis.' });
+  if (!type || !value) {
+    return res.status(400).json({ error: 'type et value requis.' });
   }
 
   // Vérifier le type

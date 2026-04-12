@@ -7,11 +7,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'maskable-icon.svg', 'icon-192.png', 'icon-512.png', 'maskable-icon-512.png', 'apple-touch-icon.png'],
+      includeAssets: ['icon.svg', 'maskable-icon.svg', 'icon-192.png', 'icon-512.png', 'maskable-icon-192.png', 'maskable-icon-512.png', 'apple-touch-icon.png'],
       manifest: {
+        id: '/',
         name: 'Score26',
         short_name: 'Score26',
+        lang: 'fr',
         description: 'Pronostics personnels pour la Coupe du Monde 2026',
+        categories: ['sports', 'entertainment'],
         theme_color: '#111827',
         background_color: '#111827',
         display: 'standalone',
@@ -29,6 +32,12 @@ export default defineConfig({
             type: 'image/png',
           },
           {
+            src: 'maskable-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+          {
             src: 'maskable-icon-512.png',
             sizes: '512x512',
             type: 'image/png',
@@ -40,11 +49,27 @@ export default defineConfig({
             type: 'image/svg+xml',
           },
         ],
+        screenshots: [
+          {
+            src: 'screenshot-mobile.png',
+            sizes: '390x844',
+            type: 'image/png',
+            form_factor: 'narrow',
+            label: 'Score26 — Pronostics Coupe du Monde 2026',
+          },
+          {
+            src: 'screenshot-wide.png',
+            sizes: '1280x720',
+            type: 'image/png',
+            form_factor: 'wide',
+            label: 'Score26 — Tableau de bord',
+          },
+        ],
       },
       // Service worker : met en cache tous les assets au build
       // + importe le gestionnaire push (push-sw.js servi depuis /public)
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         importScripts: ['/push-sw.js'],
         // Les appels API ne doivent jamais être mis en cache par le service worker
         // NetworkOnly = le SW laisse passer la requête sans interception
@@ -73,6 +98,16 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-misc': ['qrcode.react'],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:3000',

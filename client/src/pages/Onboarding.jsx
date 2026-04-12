@@ -98,22 +98,25 @@ function RegisterForm({ lang, onComplete, onSwitch }) {
       <input
         type="text" autoFocus maxLength={20}
         placeholder={t(lang, 'pseudoPlaceholder')}
+        aria-label={t(lang, 'pseudoPlaceholder')}
         value={pseudo} onChange={e => setPseudo(e.target.value)}
         className="w-full px-4 py-3 rounded-xl border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-surface-600 focus:outline-none focus:ring-2 focus:ring-accent text-center text-lg font-display"
       />
       <input
         type="email"
         placeholder={t(lang, 'email')}
+        aria-label={t(lang, 'email')}
         value={email} onChange={e => setEmail(e.target.value)}
         className="w-full px-4 py-3 rounded-xl border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-surface-600 focus:outline-none focus:ring-2 focus:ring-accent text-center text-sm"
       />
       <input
         type="password"
         placeholder={t(lang, 'password')}
+        aria-label={t(lang, 'password')}
         value={password} onChange={e => setPassword(e.target.value)}
         className="w-full px-4 py-3 rounded-xl border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-surface-600 focus:outline-none focus:ring-2 focus:ring-accent text-center text-sm"
       />
-      {error && <p className="text-result-miss text-sm text-center">{error}</p>}
+      {error && <p className="text-result-miss text-sm text-center" role="alert">{error}</p>}
       <button
         type="submit" disabled={loading}
         className="w-full py-3 rounded-xl bg-accent hover:bg-accent-dark active:scale-[0.98] text-surface-950 font-semibold text-base transition-all disabled:opacity-50"
@@ -162,16 +165,18 @@ function LoginForm({ lang, onComplete, onSwitch }) {
       <input
         type="email" autoFocus
         placeholder={t(lang, 'email')}
+        aria-label={t(lang, 'email')}
         value={email} onChange={e => setEmail(e.target.value)}
         className="w-full px-4 py-3 rounded-xl border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-surface-600 focus:outline-none focus:ring-2 focus:ring-accent text-center text-sm"
       />
       <input
         type="password"
         placeholder={t(lang, 'password')}
+        aria-label={t(lang, 'password')}
         value={password} onChange={e => setPassword(e.target.value)}
         className="w-full px-4 py-3 rounded-xl border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-surface-600 focus:outline-none focus:ring-2 focus:ring-accent text-center text-sm"
       />
-      {error && <p className="text-result-miss text-sm text-center">{error}</p>}
+      {error && <p className="text-result-miss text-sm text-center" role="alert">{error}</p>}
       <button
         type="submit" disabled={loading}
         className="w-full py-3 rounded-xl bg-accent hover:bg-accent-dark active:scale-[0.98] text-surface-950 font-semibold text-base transition-all disabled:opacity-50"
@@ -214,6 +219,7 @@ function QuickForm({ lang, onComplete, onBack }) {
 
     localStorage.setItem('score26_user_id', id)
     localStorage.setItem('score26_pseudo', trimmed)
+    if (res.token) localStorage.setItem('score26_token', res.token)
     onComplete(id)
   }
 
@@ -222,10 +228,11 @@ function QuickForm({ lang, onComplete, onBack }) {
       <input
         type="text" autoFocus maxLength={20}
         placeholder={t(lang, 'pseudoPlaceholder')}
+        aria-label={t(lang, 'pseudoPlaceholder')}
         value={pseudo} onChange={e => setPseudo(e.target.value)}
         className="w-full px-4 py-3 rounded-xl border border-surface-300 dark:border-surface-700 bg-white dark:bg-surface-900 text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-surface-600 focus:outline-none focus:ring-2 focus:ring-accent text-center text-lg font-display"
       />
-      {error && <p className="text-result-miss text-sm text-center">{error}</p>}
+      {error && <p className="text-result-miss text-sm text-center" role="alert">{error}</p>}
       <button
         type="submit" disabled={loading}
         className="w-full py-3 rounded-xl bg-accent hover:bg-accent-dark active:scale-[0.98] text-surface-950 font-semibold text-base transition-all disabled:opacity-50"

@@ -60,11 +60,14 @@ export default function Amis({ userId, lang, friendCode, deepLink, onDeepLinkHan
 
 // ── Toast réutilisable ────────────────────────────────────────────────────────
 function Toast({ toast }) {
-  if (!toast) return null
   return (
-    <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-sm font-medium shadow-lg animate-fade-in
-      ${toast.isError ? 'bg-result-miss/90 text-white' : 'bg-result-exact/90 text-white'}`}>
-      {toast.msg}
+    <div aria-live="polite" aria-atomic="true">
+      {toast && (
+        <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-sm font-medium shadow-lg animate-fade-in
+          ${toast.isError ? 'bg-result-miss/90 text-white' : 'bg-result-exact/90 text-white'}`}>
+          {toast.msg}
+        </div>
+      )}
     </div>
   )
 }
@@ -102,7 +105,7 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   // Auto-add from deep-link
   useEffect(() => {
     if (!deepLink?.code) return
-    addFriend({ user_id: userId, friend_code: deepLink.code }).then(res => {
+    addFriend({ friend_code: deepLink.code }).then(res => {
       if (!res.error) {
         showToast(t(lang, 'friendAdded'))
         loadRanking()
@@ -124,7 +127,7 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   async function handleAdd() {
     const trimmed = code.trim().toUpperCase()
     if (trimmed.length < 2) return
-    const res = await addFriend({ user_id: userId, friend_code: trimmed })
+    const res = await addFriend({ friend_code: trimmed })
     if (res.error) {
       showToast(res.error, true)
     } else {
@@ -135,7 +138,7 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   }
 
   async function handleRemove(friendId) {
-    const res = await removeFriend({ user_id: userId, friendId })
+    const res = await removeFriend({ friendId })
     if (!res.error) {
       showToast(t(lang, 'friendRemoved'))
       loadRanking()
@@ -196,12 +199,12 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
           userId={userId}
           lang={lang}
           onAccept={async id => {
-            const res = await acceptChallenge({ challengeId: id, user_id: userId })
+            const res = await acceptChallenge({ challengeId: id })
             if (!res.error) { showToast(t(lang, 'challengeAccepted')); loadChallenges() }
             else showToast(res.error, true)
           }}
           onDecline={async id => {
-            const res = await declineChallenge({ challengeId: id, user_id: userId })
+            const res = await declineChallenge({ challengeId: id })
             if (!res.error) { showToast(t(lang, 'challengeDeclined')); loadChallenges() }
             else showToast(res.error, true)
           }}
@@ -249,6 +252,7 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
           placeholder={t(lang, 'enterFriendCode')}
+          aria-label={t(lang, 'enterFriendCode')}
           maxLength={6}
           className="flex-1 px-4 py-2.5 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-900 dark:text-white text-sm font-mono tracking-widest text-center placeholder:text-surface-400 dark:placeholder:text-surface-500 placeholder:tracking-normal placeholder:font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         />
@@ -411,7 +415,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
   // Auto-join from deep-link
   useEffect(() => {
     if (!deepLink?.code) return
-    joinGroup({ user_id: userId, invite_code: deepLink.code }).then(res => {
+    joinGroup({ invite_code: deepLink.code }).then(res => {
       if (!res.error) {
         showToast(t(lang, 'groupJoined'))
         loadGroups()
@@ -439,7 +443,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
 
   async function handleCreate() {
     if (!newName.trim()) return
-    const res = await createGroup({ user_id: userId, name: newName.trim() })
+    const res = await createGroup({ name: newName.trim() })
     if (res.error) {
       showToast(res.error, true)
     } else {
@@ -452,7 +456,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
 
   async function handleJoin() {
     if (!joinCode.trim()) return
-    const res = await joinGroup({ user_id: userId, invite_code: joinCode.trim() })
+    const res = await joinGroup({ invite_code: joinCode.trim() })
     if (res.error) {
       showToast(res.error, true)
     } else {
@@ -464,7 +468,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
   }
 
   async function handleLeave(groupId) {
-    const res = await leaveGroup({ user_id: userId, groupId })
+    const res = await leaveGroup({ groupId })
     if (!res.error) {
       showToast(t(lang, 'groupLeft'))
       setSelectedGroup(null)
@@ -561,6 +565,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
             value={newName}
             onChange={e => setNewName(e.target.value.slice(0, 30))}
             placeholder={t(lang, 'groupName')}
+            aria-label={t(lang, 'groupName')}
             className="flex-1 px-4 py-2.5 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-900 dark:text-white text-sm placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           />
           <button
@@ -581,6 +586,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
             value={joinCode}
             onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))}
             placeholder={t(lang, 'groupCode')}
+            aria-label={t(lang, 'groupCode')}
             maxLength={6}
             className="flex-1 px-4 py-2.5 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-900 dark:text-white text-sm font-mono tracking-widest text-center placeholder:text-surface-400 dark:placeholder:text-surface-500 placeholder:tracking-normal placeholder:font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           />
@@ -856,7 +862,7 @@ function ChallengesWithFriendView({ userId, friend, challenges, lang, onBack, on
   }
 
   async function handleCreate(matchId) {
-    const res = await createChallenge({ user_id: userId, opponent_id: friend.id, match_id: matchId })
+    const res = await createChallenge({ opponent_id: friend.id, match_id: matchId })
     if (res.error) { showToast(res.error, true); return }
     showToast(t(lang, 'challengeSent'))
     setShowMatchPicker(false)
@@ -864,19 +870,19 @@ function ChallengesWithFriendView({ userId, friend, challenges, lang, onBack, on
   }
 
   async function handleAccept(id) {
-    const res = await acceptChallenge({ challengeId: id, user_id: userId })
+    const res = await acceptChallenge({ challengeId: id })
     if (!res.error) { showToast(t(lang, 'challengeAccepted')); onRefresh() }
     else showToast(res.error, true)
   }
 
   async function handleDecline(id) {
-    const res = await declineChallenge({ challengeId: id, user_id: userId })
+    const res = await declineChallenge({ challengeId: id })
     if (!res.error) { showToast(t(lang, 'challengeDeclined')); onRefresh() }
     else showToast(res.error, true)
   }
 
   async function handleCancel(id) {
-    const res = await cancelChallenge({ challengeId: id, user_id: userId })
+    const res = await cancelChallenge({ challengeId: id })
     if (!res.error) { showToast(t(lang, 'challengeCancelled')); onRefresh() }
     else showToast(res.error, true)
   }

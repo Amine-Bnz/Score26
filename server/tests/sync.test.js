@@ -100,12 +100,12 @@ describe('sync routes', { concurrency: false }, () => {
       process.env.ADMIN_TOKEN = original;
     });
 
-    test('accepte avec bon token', () => {
+    test('accepte avec bon token en header', () => {
       delete require.cache[require.resolve('../routes/sync')];
       const syncRouter = require('../routes/sync');
       const [middleware] = getMiddleware(syncRouter, '/status', 'get');
 
-      const req = mockReq({ query: { token: 'test-secret' } });
+      const req = mockReq({ headers: { 'x-admin-token': 'test-secret' } });
       const res = mockRes();
       let nextCalled = false;
       middleware(req, res, () => { nextCalled = true; });

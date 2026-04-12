@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { t } from '../i18n'
 import AvatarInitials from './AvatarInitials'
 
@@ -37,7 +38,7 @@ function StatusBadge({ status, winnerId, userId, lang }) {
 
 // Carte défi — 3 variantes selon status
 // Props : challenge (objet), userId, lang, onAccept, onDecline, onCancel
-export default function ChallengeCard({ challenge: c, userId, lang, onAccept, onDecline, onCancel }) {
+export default memo(function ChallengeCard({ challenge: c, userId, lang, onAccept, onDecline, onCancel }) {
   const isChallenger = c.challenger_id === userId
   const opponentPseudo = isChallenger ? c.opponent_pseudo : c.challenger_pseudo
   const isPendingReceived = c.status === 'pending' && !isChallenger
@@ -119,4 +120,4 @@ export default function ChallengeCard({ challenge: c, userId, lang, onAccept, on
       )}
     </div>
   )
-}
+})

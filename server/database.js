@@ -1,4 +1,5 @@
 const Database = require('better-sqlite3');
+const crypto  = require('crypto');
 const path = require('path');
 const logger = require('./logger');
 
@@ -7,6 +8,10 @@ const logger = require('./logger');
 const db = new Database(process.env.DATABASE_PATH || path.join(__dirname, 'score26.db'));
 
 db.pragma('foreign_keys = ON');
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');  // sûr avec WAL, 2× plus rapide que FULL
+db.pragma('cache_size = -8000');    // 8 Mo de cache (défaut = 2 Mo)
+db.pragma('temp_store = MEMORY');   // tables temporaires en RAM
 
 // Création des tables (schéma complet v2)
 db.exec(`
@@ -107,11 +112,11 @@ try {
   logger.debug({ error: e.message }, '[migration] Index friend_code déjà existant (ignoré)');
 }
 
-// Générer un friend_code pour les users existants sans code
+// S9: Générer un friend_code cryptographiquement sûr (crypto.randomInt au lieu de Math.random)
 function generateFriendCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans I/O/0/1 pour éviter confusion
   let code = '';
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 6; i++) code += chars[crypto.randomInt(chars.length)];
   return code;
 }
 
@@ -188,6 +193,32 @@ db.exec(`
     created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (reactor_id, target_user_id, match_id)
   );
+`);
+
+// ── Index de performance (idempotents) ──────────────────────────────────────
+db.exec(`
+  -- pronos : jointures et agrégations constantes sur user_id et match_id
+  CREATE INDEX IF NOT EXISTS idx_pronos_user_id   ON pronos(user_id);
+  CREATE INDEX IF NOT EXISTS idx_pronos_match_id  ON pronos(match_id);
+
+  -- matchs : filtrage par statut, tri par date, filtrage par journée
+  CREATE INDEX IF NOT EXISTS idx_matchs_statut          ON matchs(statut);
+  CREATE INDEX IF NOT EXISTS idx_matchs_date_coup_envoi ON matchs(date_coup_envoi);
+  CREATE INDEX IF NOT EXISTS idx_matchs_journee         ON matchs(journee);
+
+  -- friendships : lookup bidirectionnel
+  CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id);
+
+  -- group_members : lookup par user_id (PK couvre déjà group_id, user_id)
+  CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON group_members(user_id);
+
+  -- challenges : lookup par participant
+  CREATE INDEX IF NOT EXISTS idx_challenges_challenger ON challenges(challenger_id);
+  CREATE INDEX IF NOT EXISTS idx_challenges_opponent   ON challenges(opponent_id);
+  CREATE INDEX IF NOT EXISTS idx_challenges_status     ON challenges(status);
+
+  -- push_subscriptions : lookup par user_id
+  CREATE INDEX IF NOT EXISTS idx_push_subs_user_id ON push_subscriptions(user_id);
 `);
 
 db.generateFriendCode = generateFriendCode;

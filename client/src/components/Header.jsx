@@ -46,7 +46,7 @@ function AboutModal({ lang, onClose }) {
           </span>
           <button
             onClick={onClose}
-            className="text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 transition text-lg leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+            className="text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 transition text-lg leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label={isFr ? 'Fermer' : 'Close'}
           >
             ✕
@@ -101,7 +101,7 @@ export default function Header({ lang, onLangToggle, theme, onThemeToggle, pendi
         {/* Toggle langue */}
         <button
           onClick={() => { navigator.vibrate?.(10); onLangToggle() }}
-          className="text-[11px] font-semibold tracking-wide text-surface-500 dark:text-surface-400 hover:text-surface-800 dark:hover:text-surface-200 transition-colors px-2 py-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="text-[11px] font-semibold tracking-wide text-surface-500 dark:text-surface-400 hover:text-surface-800 dark:hover:text-surface-200 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label={lang === 'fr' ? 'Changer la langue' : 'Switch language'}
         >
           {lang === 'fr' ? 'EN' : 'FR'}
@@ -122,14 +122,14 @@ export default function Header({ lang, onLangToggle, theme, onThemeToggle, pendi
         <div className="flex items-center gap-1">
           <button
             onClick={() => { navigator.vibrate?.(10); setShowAbout(true) }}
-            className="text-surface-400 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors w-8 h-8 rounded-lg flex items-center justify-center text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="text-surface-400 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors w-11 h-11 rounded-lg flex items-center justify-center text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             aria-label={lang === 'fr' ? 'À propos' : 'About'}
           >
             <InfoIcon className="w-4 h-4" />
           </button>
           <button
             onClick={() => { navigator.vibrate?.(10); onThemeToggle() }}
-            className="text-surface-400 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors w-8 h-8 rounded-lg flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="text-surface-400 dark:text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 transition-colors w-11 h-11 rounded-lg flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             aria-label={lang === 'fr' ? 'Changer le thème' : 'Switch theme'}
           >
             {theme === 'dark' ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}

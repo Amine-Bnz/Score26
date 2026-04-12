@@ -5,9 +5,9 @@ const logger = require('../logger');
 const { syncCalendrier, syncResultats } = require('../services/footballData');
 const { calculerPoints, resoudreChallenges } = require('../scoring');
 
-// Middleware : vérifie le token admin avant chaque route de sync
+// Middleware : vérifie le token admin via header uniquement (S3: pas de token en URL)
 function adminOnly(req, res, next) {
-  const token = req.query.token || req.headers['x-admin-token'];
+  const token = req.headers['x-admin-token'];
   const expected = process.env.ADMIN_TOKEN;
   if (!expected || expected === 'change_this_before_deploy' || token !== expected) {
     logger.warn({ ip: req.ip, method: req.method, path: req.path }, '[sync] Accès refusé');

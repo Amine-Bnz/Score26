@@ -2,6 +2,12 @@ const express = require('express');
 const crypto  = require('crypto');
 const router  = express.Router();
 const db      = require('../database');
+const { requireAuth } = require('../middleware/auth');
+const { validateUUIDParam } = require('../middleware/validate');
+
+// S8: valider le format UUID sur les paramètres :userId et :id (challenge UUID)
+router.param('userId', validateUUIDParam);
+router.param('id', validateUUIDParam);
 
 // GET /api/challenges/:userId — mes défis (en cours + historique)
 // Inclut les pronos et points des deux joueurs quand disponibles
@@ -29,12 +35,13 @@ router.get('/:userId', (req, res) => {
   return res.json(challenges);
 });
 
-// POST /api/challenges — créer un défi
-router.post('/', (req, res) => {
-  const { user_id, opponent_id, match_id } = req.body;
+// POST /api/challenges — créer un défi (auth requise)
+router.post('/', requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const { opponent_id, match_id } = req.body;
 
-  if (!user_id || !opponent_id || !match_id) {
-    return res.status(400).json({ error: 'user_id, opponent_id et match_id requis.' });
+  if (!opponent_id || !match_id) {
+    return res.status(400).json({ error: 'opponent_id et match_id requis.' });
   }
 
   if (user_id === opponent_id) {
@@ -70,9 +77,9 @@ router.post('/', (req, res) => {
   return res.status(201).json({ id, status: 'pending' });
 });
 
-// POST /api/challenges/:id/accept — accepter un défi
-router.post('/:id/accept', (req, res) => {
-  const { user_id } = req.body;
+// POST /api/challenges/:id/accept — accepter un défi (auth requise)
+router.post('/:id/accept', requireAuth, (req, res) => {
+  const user_id = req.userId;
   const challenge = db.prepare('SELECT * FROM challenges WHERE id = ?').get(req.params.id);
 
   if (!challenge) return res.status(404).json({ error: 'Défi introuvable.' });
@@ -83,9 +90,9 @@ router.post('/:id/accept', (req, res) => {
   return res.json({ ok: true });
 });
 
-// POST /api/challenges/:id/decline — refuser un défi
-router.post('/:id/decline', (req, res) => {
-  const { user_id } = req.body;
+// POST /api/challenges/:id/decline — refuser un défi (auth requise)
+router.post('/:id/decline', requireAuth, (req, res) => {
+  const user_id = req.userId;
   const challenge = db.prepare('SELECT * FROM challenges WHERE id = ?').get(req.params.id);
 
   if (!challenge) return res.status(404).json({ error: 'Défi introuvable.' });
@@ -95,9 +102,9 @@ router.post('/:id/decline', (req, res) => {
   return res.json({ ok: true });
 });
 
-// DELETE /api/challenges/:id — annuler un défi (par le challenger uniquement, si pending)
-router.delete('/:id', (req, res) => {
-  const { user_id } = req.body;
+// DELETE /api/challenges/:id — annuler un défi (par le challenger uniquement, si pending, auth requise)
+router.delete('/:id', requireAuth, (req, res) => {
+  const user_id = req.userId;
   const challenge = db.prepare('SELECT * FROM challenges WHERE id = ?').get(req.params.id);
 
   if (!challenge) return res.status(404).json({ error: 'Défi introuvable.' });

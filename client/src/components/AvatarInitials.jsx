@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 // Avatar par initiales — remplace DiceBear
 // Génère un dégradé basé sur le pseudo (déterministe)
 
@@ -36,7 +38,7 @@ function getInitials(pseudo) {
   return pseudo.charAt(0).toUpperCase()
 }
 
-export default function AvatarInitials({ pseudo, size = 96, className = '' }) {
+export default memo(function AvatarInitials({ pseudo, size = 96, className = '' }) {
   const [c1, c2] = getColors(pseudo || '')
   const initial = getInitials(pseudo)
   const fontSize = Math.round(size * 0.42)
@@ -58,4 +60,4 @@ export default function AvatarInitials({ pseudo, size = 96, className = '' }) {
       {initial}
     </div>
   )
-}
+})

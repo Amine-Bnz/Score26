@@ -81,7 +81,7 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       })
 
-      await subscribePush({ user_id: userId, subscription: sub.toJSON() })
+      await subscribePush({ subscription: sub.toJSON() })
       setNotifStatus('granted')
     } catch (err) {
       console.error('[push subscribe]', err)
@@ -275,7 +275,7 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
                   if (!secureEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(secureEmail)) { setSecureError(t(lang, 'emailInvalid')); return }
                   if (securePass.length < 6) { setSecureError(t(lang, 'passwordTooShort')); return }
                   setSecureLoading(true)
-                  const res = await secureAccount({ user_id: userId, email: secureEmail, password: securePass })
+                  const res = await secureAccount({ email: secureEmail, password: securePass })
                   if (res.error) { setSecureError(res.error); setSecureLoading(false); return }
                   if (res.token) localStorage.setItem('score26_token', res.token)
                   setUser({ ...user, email: secureEmail })
@@ -334,7 +334,7 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
               disabled={deleteConfirmPseudo !== user.pseudo || deleteLoading}
               onClick={async () => {
                 setDeleteLoading(true)
-                const res = await deleteAccount({ user_id: userId, confirm_pseudo: deleteConfirmPseudo })
+                const res = await deleteAccount({ confirm_pseudo: deleteConfirmPseudo })
                 if (res.error) { setDeleteLoading(false); return }
                 localStorage.removeItem('score26_user_id')
                 localStorage.removeItem('score26_pseudo')
@@ -566,7 +566,7 @@ function NotifDelaySelector({ userId, lang }) {
   async function handleChange(val) {
     const v = Number(val)
     setDelay(v)
-    await updateNotifDelay({ user_id: userId, notif_delay: v })
+    await updateNotifDelay({ notif_delay: v })
   }
 
   if (!loaded) return null

@@ -1,7 +1,7 @@
 // Icônes SVG inline — stroke, 24×24, strokeWidth 1.8
 // Usage : <SunIcon className="w-5 h-5" />
 
-const base = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' }
+const base = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
 
 export function SunIcon({ className = 'w-5 h-5' }) {
   return (

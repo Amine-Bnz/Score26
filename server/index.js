@@ -1,5 +1,8 @@
 require('dotenv').config();
 const express = require('express');
+const crypto  = require('crypto');
+const fs      = require('fs');
+const path    = require('path');
 const cors    = require('cors');
 const helmet      = require('helmet');
 const compression = require('compression');
@@ -15,13 +18,24 @@ const { calculerPoints, resoudreChallenges } = require('./scoring');
 const { envoyerNotifAvantMatch, envoyerNotifResultat, envoyerRecapJournee }  = require('./services/pushNotifications');
 const { createUserRateLimit }  = require('./middleware/userRateLimit');
 
-// Sécurité : headers HTTP (X-Content-Type-Options, X-Frame-Options, etc.)
-// CSP adapté pour servir le SPA React (inline script theme-init, Google Fonts)
+// Lecture du template HTML au démarrage (pour injection du nonce CSP)
+const clientDist = path.join(__dirname, 'public');
+let indexHtmlTemplate = '';
+try { indexHtmlTemplate = fs.readFileSync(path.join(clientDist, 'index.html'), 'utf-8'); }
+catch { /* dev mode : le build client n'existe pas encore */ }
+
+// S7: Nonce CSP par requête — remplace 'unsafe-inline' pour les scripts
+app.use((req, res, next) => {
+  res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+  next();
+});
+
+// Sécurité : headers HTTP + CSP avec nonce (plus de 'unsafe-inline' sur scripts)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:"],
@@ -97,13 +111,18 @@ app.use('/api/reactions', require('./routes/reactions'));
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // Servir le build client (React SPA)
-const path = require('path');
-const clientDist = path.join(__dirname, 'public');
-app.use(express.static(clientDist));
-// Fallback SPA : toute route non-API renvoie index.html (gère /invite/CODE, /group/CODE, etc.)
+// P3: cache long sur les assets versionnés (hash dans le nom de fichier)
+app.use('/assets', express.static(path.join(clientDist, 'assets'), {
+  maxAge: '1y',
+  immutable: true,
+}));
+// index: false → index.html toujours servi via le fallback SPA (avec nonce CSP)
+app.use(express.static(clientDist, { index: false }));
+// Fallback SPA : injecte le nonce CSP dans le HTML avant envoi
 app.get('/{*path}', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
-  res.sendFile(path.join(clientDist, 'index.html'));
+  if (!indexHtmlTemplate) return res.status(404).send('Build client introuvable.');
+  res.type('html').send(indexHtmlTemplate.replace(/__CSP_NONCE__/g, res.locals.cspNonce));
 });
 
 // Middleware d'erreur — log toutes les réponses 4xx/5xx

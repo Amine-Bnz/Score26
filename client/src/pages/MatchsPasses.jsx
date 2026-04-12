@@ -69,12 +69,13 @@ export default function MatchsPasses({ userId, lang, initialData = null }) {
           value={teamFilter}
           onChange={e => setTeamFilter(e.target.value)}
           placeholder={t(lang, 'filterTeam')}
+          aria-label={t(lang, 'filterTeam')}
           className="flex-1 px-3 py-2 rounded-xl bg-surface-100 dark:bg-surface-800 text-surface-900 dark:text-white text-xs placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         />
         {teamFilter && (
           <button
             onClick={() => setTeamFilter('')}
-            className="text-xs text-surface-400 hover:text-accent font-medium px-2"
+            className="text-xs text-surface-400 hover:text-accent font-medium px-2 min-h-[44px] flex items-center"
           >
             {t(lang, 'clearFilter')}
           </button>
@@ -107,7 +108,7 @@ export default function MatchsPasses({ userId, lang, initialData = null }) {
             <div key={groupe}>
               <button
                 onClick={() => toggleGroup(groupe)}
-                className="flex items-center gap-1.5 w-full mt-4 mb-2 pl-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                className="flex items-center gap-1.5 w-full mt-4 mb-2 pl-0.5 min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
               >
                 <ChevronIcon className={`w-3.5 h-3.5 text-surface-400 dark:text-surface-500 transition-transform duration-200 ${collapsedGroups[groupe] ? '' : 'rotate-90'}`} />
                 <span className="text-[11px] font-semibold uppercase tracking-widest text-surface-400 dark:text-surface-500">

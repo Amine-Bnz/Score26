@@ -2,6 +2,7 @@ const express   = require('express');
 const rateLimit = require('express-rate-limit');
 const router    = express.Router();
 const db        = require('../database');
+const { requireAuth } = require('../middleware/auth');
 
 // 60 pronos max par IP par minute
 const limiterPronos = rateLimit({
@@ -12,13 +13,14 @@ const limiterPronos = rateLimit({
   message: { error: 'Trop de requêtes. Réessaie dans 1 minute.' },
 });
 
-// POST /api/pronos — créer ou mettre à jour un prono (upsert)
-// Body : { user_id, match_id, score_predit_a, score_predit_b }
-router.post('/', limiterPronos, (req, res) => {
-  const { user_id, match_id, score_predit_a, score_predit_b, score_predit_90_a, score_predit_90_b } = req.body;
+// POST /api/pronos — créer ou mettre à jour un prono (upsert, auth requise)
+// Body : { match_id, score_predit_a, score_predit_b }
+router.post('/', limiterPronos, requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const { match_id, score_predit_a, score_predit_b, score_predit_90_a, score_predit_90_b } = req.body;
 
-  if (!user_id || !match_id || score_predit_a == null || score_predit_b == null) {
-    return res.status(400).json({ error: 'Champs manquants : user_id, match_id, score_predit_a, score_predit_b requis.' });
+  if (!match_id || score_predit_a == null || score_predit_b == null) {
+    return res.status(400).json({ error: 'Champs manquants : match_id, score_predit_a, score_predit_b requis.' });
   }
 
   // Sanitisation : les scores doivent être des entiers entre 0 et 99

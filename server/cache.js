@@ -27,4 +27,7 @@ class MemoryCache {
 // Instance partagée pour le classement global (TTL 60s)
 const rankingCache = new MemoryCache(60 * 1000);
 
-module.exports = { rankingCache, MemoryCache };
+// Cache pour le classement par journée (TTL 60s)
+const matchdayCache = new MemoryCache(60 * 1000);
+
+module.exports = { rankingCache, matchdayCache, MemoryCache };

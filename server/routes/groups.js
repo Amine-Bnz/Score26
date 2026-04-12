@@ -2,6 +2,12 @@ const express = require('express');
 const crypto  = require('crypto');
 const router  = express.Router();
 const db      = require('../database');
+const { requireAuth } = require('../middleware/auth');
+const { validateUUIDParam } = require('../middleware/validate');
+
+// S8: valider le format UUID sur les paramètres :userId et :groupId
+router.param('userId', validateUUIDParam);
+router.param('groupId', validateUUIDParam);
 
 // GET /api/groups/:userId — mes groupes
 router.get('/:userId', (req, res) => {
@@ -36,24 +42,25 @@ router.get('/:groupId/ranking', (req, res) => {
   return res.json(ranking);
 });
 
-// POST /api/groups — créer un groupe
-router.post('/', (req, res) => {
-  const { user_id, name } = req.body;
+// POST /api/groups — créer un groupe (auth requise)
+router.post('/', requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const { name } = req.body;
 
-  if (!user_id || !name || !name.trim()) {
-    return res.status(400).json({ error: 'user_id et name requis.' });
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'name requis.' });
   }
 
   const trimmed = name.trim().slice(0, 30);
   const id = crypto.randomUUID();
 
-  // Générer un code d'invitation unique (6 chars)
+  // S9: Générer un code d'invitation unique (6 chars, crypto.randomInt)
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const existing = new Set(db.prepare('SELECT invite_code FROM groups_').all().map(r => r.invite_code));
   let invite_code;
   do {
     invite_code = '';
-    for (let i = 0; i < 6; i++) invite_code += chars[Math.floor(Math.random() * chars.length)];
+    for (let i = 0; i < 6; i++) invite_code += chars[crypto.randomInt(chars.length)];
   } while (existing.has(invite_code));
 
   db.transaction(() => {
@@ -64,12 +71,13 @@ router.post('/', (req, res) => {
   return res.status(201).json({ id, name: trimmed, invite_code, owner_id: user_id, member_count: 1 });
 });
 
-// POST /api/groups/join — rejoindre un groupe via invite_code
-router.post('/join', (req, res) => {
-  const { user_id, invite_code } = req.body;
+// POST /api/groups/join — rejoindre un groupe via invite_code (auth requise)
+router.post('/join', requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const { invite_code } = req.body;
 
-  if (!user_id || !invite_code) {
-    return res.status(400).json({ error: 'user_id et invite_code requis.' });
+  if (!invite_code) {
+    return res.status(400).json({ error: 'invite_code requis.' });
   }
 
   const group = db.prepare('SELECT id, name FROM groups_ WHERE invite_code = ?').get(invite_code.toUpperCase().trim());
@@ -87,14 +95,10 @@ router.post('/join', (req, res) => {
   return res.status(201).json({ group_id: group.id, name: group.name });
 });
 
-// DELETE /api/groups/:groupId/leave — quitter un groupe
-router.delete('/:groupId/leave', (req, res) => {
-  const { user_id } = req.body;
+// DELETE /api/groups/:groupId/leave — quitter un groupe (auth requise)
+router.delete('/:groupId/leave', requireAuth, (req, res) => {
+  const user_id = req.userId;
   const groupId = req.params.groupId;
-
-  if (!user_id) {
-    return res.status(400).json({ error: 'user_id requis.' });
-  }
 
   const group = db.prepare('SELECT owner_id FROM groups_ WHERE id = ?').get(groupId);
   if (!group) {

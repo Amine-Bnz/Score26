@@ -22,7 +22,12 @@ function shortName(full) {
 }
 
 export default function Admin() {
-  const token = new URLSearchParams(window.location.search).get('token') || ''
+  // S3: lire le token depuis l'URL une seule fois, puis le retirer de l'URL (sécurité)
+  const [token] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get('token') || ''
+    if (t) window.history.replaceState({}, '', window.location.pathname)
+    return t
+  })
   const [matchs,  setMatchs]  = useState([])
   const [error,   setError]   = useState('')
   const [loading, setLoading] = useState(true)
@@ -34,7 +39,7 @@ export default function Admin() {
   async function charger() {
     setError('')
     try {
-      const res = await fetch(`${API_BASE}/admin/matchs?token=${token}`)
+      const res = await fetch(`${API_BASE}/admin/matchs`, { headers: { 'x-admin-token': token } })
       if (res.status === 401) { setError('Token invalide — vérifier ?token= dans l\'URL'); return }
       if (!res.ok) {
         const txt = await res.text()
@@ -62,9 +67,9 @@ export default function Admin() {
   useEffect(() => { charger() }, [])
 
   async function patcher(matchId, body, msg) {
-    const res = await fetch(`${API_BASE}/admin/matchs/${matchId}?token=${token}`, {
+    const res = await fetch(`${API_BASE}/admin/matchs/${matchId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
       body: JSON.stringify(body),
     })
     if (!res.ok) { setFeedback(f => ({ ...f, [matchId]: '❌ Erreur' })); return }

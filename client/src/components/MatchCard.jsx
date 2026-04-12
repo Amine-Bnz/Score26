@@ -1,5 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
-import confetti from 'canvas-confetti'
+import { useState, useRef, useEffect, memo } from 'react'
+// canvas-confetti chargé dynamiquement au premier tap (P5)
+let confettiPromise = null
+function getConfetti() {
+  if (!confettiPromise) confettiPromise = import('canvas-confetti').then(m => m.default)
+  return confettiPromise
+}
 import { upsertProno, getFriendPronos, toggleReaction } from '../api'
 import { queueProno } from '../hooks/useOfflineSync'
 import { t, splitTeam } from '../i18n'
@@ -21,19 +26,22 @@ const resultStyles = {
   neutre:      { border: 'border-l-surface-600',   badge: 'bg-surface-500/10 text-surface-400',   dot: 'bg-surface-400' },
 }
 
-// Compteur animé 0 → valeur cible (pour les points obtenus)
+// Compteur animé 0 → valeur cible (rAF, ~600ms)
 function AnimatedCount({ value }) {
   const [count, setCount] = useState(0)
   useEffect(() => {
-    if (value == null) return
-    let current = 0
-    const step = Math.max(1, Math.ceil(value / 20))
-    const id = setInterval(() => {
-      current += step
-      if (current >= value) { setCount(value); clearInterval(id) }
-      else setCount(current)
-    }, 30)
-    return () => clearInterval(id)
+    if (value == null || value === 0) { setCount(value ?? 0); return }
+    const duration = 600
+    let start = null
+    let raf
+    function tick(ts) {
+      if (!start) start = ts
+      const progress = Math.min((ts - start) / duration, 1)
+      setCount(Math.round(progress * value))
+      if (progress < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
   }, [value])
   return <>{count}</>
 }
@@ -85,7 +93,7 @@ function TeamBlock({ fullName, lang }) {
 }
 
 // ── Card matchs à venir ──────────────────────────────────────────────────────
-export function MatchCardAvenir({ match, userId, lang, isOnline = true, highlight = false, lastChance = false, onPronoSaved }) {
+export const MatchCardAvenir = memo(function MatchCardAvenir({ match, userId, lang, isOnline = true, highlight = false, lastChance = false, onPronoSaved }) {
   const isKO = match.phase && match.phase !== 'groupe'
   const [scoreA, setScoreA] = useState(match.score_predit_a ?? '')
   const [scoreB, setScoreB] = useState(match.score_predit_b ?? '')
@@ -204,6 +212,7 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
             type="text" inputMode="numeric" pattern="[0-9]*"
             value={scoreA}
             disabled={isVerrouille}
+            aria-label={`${lang === 'fr' ? 'Score' : 'Score'} ${splitTeam(match.equipe_a, lang).name}`}
             onFocus={e => e.target.select()}
             onChange={e => {
               const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
@@ -214,12 +223,13 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
             }}
             className={inputClasses(saved)}
           />
-          <span className="text-surface-300 dark:text-surface-600 font-medium text-sm select-none">–</span>
+          <span className="text-surface-300 dark:text-surface-600 font-medium text-sm select-none" aria-hidden="true">–</span>
           <input
             ref={inputBRef}
             type="text" inputMode="numeric" pattern="[0-9]*"
             value={scoreB}
             disabled={isVerrouille}
+            aria-label={`${lang === 'fr' ? 'Score' : 'Score'} ${splitTeam(match.equipe_b, lang).name}`}
             onFocus={e => e.target.select()}
             onChange={e => {
               const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
@@ -243,26 +253,28 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
             type="text" inputMode="numeric" pattern="[0-9]*"
             value={score90A} disabled={isVerrouille}
             placeholder="–"
+            aria-label={`Score 90' ${splitTeam(match.equipe_a, lang).name}`}
             onFocus={e => e.target.select()}
             onChange={e => {
               const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
               const p = v === '' ? '' : Math.max(0, Math.min(99, parseInt(v) || 0))
               setScore90A(p)
             }}
-            className="w-8 h-7 rounded border text-center text-xs font-bold bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300 border-surface-200 dark:border-surface-700 focus:outline-none focus:border-accent"
+            className="w-10 h-10 rounded border text-center text-xs font-bold bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300 border-surface-200 dark:border-surface-700 focus:outline-none focus:border-accent"
           />
-          <span className="text-surface-300 dark:text-surface-600 text-[10px]">–</span>
+          <span className="text-surface-300 dark:text-surface-600 text-[10px]" aria-hidden="true">–</span>
           <input
             type="text" inputMode="numeric" pattern="[0-9]*"
             value={score90B} disabled={isVerrouille}
             placeholder="–"
+            aria-label={`Score 90' ${splitTeam(match.equipe_b, lang).name}`}
             onFocus={e => e.target.select()}
             onChange={e => {
               const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2)
               const p = v === '' ? '' : Math.max(0, Math.min(99, parseInt(v) || 0))
               setScore90B(p)
             }}
-            className="w-8 h-7 rounded border text-center text-xs font-bold bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300 border-surface-200 dark:border-surface-700 focus:outline-none focus:border-accent"
+            className="w-10 h-10 rounded border text-center text-xs font-bold bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300 border-surface-200 dark:border-surface-700 focus:outline-none focus:border-accent"
           />
           <span className="text-[10px] text-surface-400 dark:text-surface-500 ml-1">
             {lang === 'fr' ? '(si prolongation)' : '(if extra time)'}
@@ -271,10 +283,10 @@ export function MatchCardAvenir({ match, userId, lang, isOnline = true, highligh
       )}
     </div>
   )
-}
+})
 
 // ── Card match en cours (live) ───────────────────────────────────────────────
-export function MatchCardActive({ match, lang, userId }) {
+export const MatchCardActive = memo(function MatchCardActive({ match, lang, userId }) {
   const scoreA = match.score_live_a ?? '?'
   const scoreB = match.score_live_b ?? '?'
   const minute = match.minute_live
@@ -342,7 +354,7 @@ export function MatchCardActive({ match, lang, userId }) {
       </div>
     </div>
   )
-}
+})
 
 // ── Section pronos amis (lazy-loaded, expandable) ───────────────────────────��
 const REACTION_EMOJIS = ['🔥', '😂', '😮', '💀']
@@ -365,7 +377,7 @@ function FriendPronosSection({ matchId, userId, lang }) {
   }
 
   async function handleReaction(targetUserId, emoji) {
-    const res = await toggleReaction(userId, targetUserId, matchId, emoji)
+    const res = await toggleReaction(targetUserId, matchId, emoji)
     if (res.error) return
     // Optimistic update
     setPronos(prev => prev.map(p => {
@@ -388,7 +400,7 @@ function FriendPronosSection({ matchId, userId, lang }) {
 
   return (
     <div className="mt-2 pt-2 border-t border-surface-100 dark:border-surface-800/60">
-      <button onClick={toggle} className="flex items-center gap-1.5 w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
+      <button onClick={toggle} className="flex items-center gap-1.5 w-full min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
         <FriendsIcon className="w-3.5 h-3.5 text-surface-400 dark:text-surface-500" />
         <span className="text-[10px] font-medium text-surface-400 dark:text-surface-500">{t(lang, 'friendPronos')}</span>
         <ChevronIcon className={`w-3 h-3 ml-auto text-surface-400 dark:text-surface-500 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
@@ -441,7 +453,7 @@ function FriendPronosSection({ matchId, userId, lang }) {
 }
 
 // ── Card matchs passés ───────────────────────────────────────────────────────
-export function MatchCardPasse({ match, lang, userId }) {
+export const MatchCardPasse = memo(function MatchCardPasse({ match, lang, userId }) {
   const resultat = getResultat(match)
   const style = resultStyles[resultat]
   const firedRef = useRef(false)
@@ -461,7 +473,7 @@ export function MatchCardPasse({ match, lang, userId }) {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = (e.clientX || rect.left + rect.width / 2) / window.innerWidth
     const y = (e.clientY || rect.top + rect.height / 2) / window.innerHeight
-    confetti({ particleCount: 60, spread: 55, origin: { x, y }, disableForReducedMotion: true })
+    getConfetti().then(fn => fn({ particleCount: 60, spread: 55, origin: { x, y }, disableForReducedMotion: true }))
     navigator.vibrate?.(15)
   }
 
@@ -532,4 +544,4 @@ export function MatchCardPasse({ match, lang, userId }) {
       </div>
     </div>
   )
-}
+})

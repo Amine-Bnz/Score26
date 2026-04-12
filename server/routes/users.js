@@ -1,8 +1,15 @@
 const express  = require('express');
+const jwt      = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const router    = express.Router();
 const db        = require('../database');
-const { rankingCache } = require('../cache');
+const { rankingCache, matchdayCache } = require('../cache');
+const { JWT_SECRET, JWT_EXPIRES } = require('../config/jwt');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
+const { validateUUIDParam, UUID_REGEX } = require('../middleware/validate');
+
+// S8: valider le format UUID sur les paramètres :id
+router.param('id', validateUUIDParam);
 
 // 5 créations de compte max par IP sur 15 minutes
 const limiterCreation = rateLimit({
@@ -20,6 +27,11 @@ router.post('/', limiterCreation, (req, res) => {
 
   if (!id || !pseudo || !avatar_seed) {
     return res.status(400).json({ error: 'Champs manquants : id, pseudo, avatar_seed requis.' });
+  }
+
+  // S8: le client génère l'UUID — on valide le format
+  if (!UUID_REGEX.test(id)) {
+    return res.status(400).json({ error: 'Identifiant invalide.' });
   }
 
   // Validation du pseudo : 1-20 caractères, lettres/chiffres/tiret/underscore uniquement
@@ -41,7 +53,9 @@ router.post('/', limiterCreation, (req, res) => {
 
   db.prepare('INSERT INTO users (id, pseudo, avatar_seed, friend_code) VALUES (?, ?, ?, ?)').run(id, pseudo, avatar_seed, friend_code);
 
-  return res.status(201).json({ id, pseudo, avatar_seed, friend_code });
+  const token = jwt.sign({ userId: id }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+
+  return res.status(201).json({ id, pseudo, avatar_seed, friend_code, token });
 });
 
 // GET /api/users/search?pseudo=xxx — recherche d'un utilisateur par pseudo
@@ -51,11 +65,14 @@ router.get('/search', (req, res) => {
     return res.status(400).json({ error: 'pseudo requis.' });
   }
 
+  // S10: échapper les caractères spéciaux LIKE pour éviter les recherches abusives
+  const safe = pseudo.replace(/[\\%_]/g, ch => '\\' + ch);
+
   const users = db.prepare(`
     SELECT id, pseudo, avatar_seed FROM users
-    WHERE pseudo LIKE ?
+    WHERE pseudo LIKE ? ESCAPE '\\'
     LIMIT 10
-  `).all(`%${pseudo}%`);
+  `).all(`%${safe}%`);
 
   return res.json(users);
 });
@@ -90,7 +107,7 @@ router.get('/ranking', (req, res) => {
   return res.json(result);
 });
 
-// GET /api/users/ranking/matchday — classement par journée
+// GET /api/users/ranking/matchday — classement par journée (caché 60s)
 router.get('/ranking/matchday', (req, res) => {
   const { journee } = req.query;
 
@@ -101,6 +118,10 @@ router.get('/ranking/matchday', (req, res) => {
     targetJournee = last?.j;
     if (!targetJournee) return res.json([]);
   }
+
+  const cacheKey = `matchday:${targetJournee}`;
+  const cached = matchdayCache.get(cacheKey);
+  if (cached) return res.json(cached);
 
   const ranking = db.prepare(`
     SELECT u.id, u.pseudo, u.avatar_seed,
@@ -116,7 +137,9 @@ router.get('/ranking/matchday', (req, res) => {
     LIMIT 100
   `).all(targetJournee);
 
-  return res.json({ journee: targetJournee, ranking });
+  const result = { journee: targetJournee, ranking };
+  matchdayCache.set(cacheKey, result);
+  return res.json(result);
 });
 
 // GET /api/users/ranking/matchday/list — liste des journées disponibles
@@ -125,8 +148,9 @@ router.get('/ranking/matchday/list', (req, res) => {
   return res.json(journees.map(r => r.journee));
 });
 
-// GET /api/users/:id — récupération du profil + stats
-router.get('/:id', (req, res) => {
+// GET /api/users/:id — récup��ration du profil + stats
+// Email visible uniquement par le propriétaire du compte (auth optionnelle)
+router.get('/:id', optionalAuth, (req, res) => {
   const user = db.prepare('SELECT id, pseudo, avatar_seed, friend_code, email, created_at FROM users WHERE id = ?').get(req.params.id);
 
   if (!user) {
@@ -159,7 +183,12 @@ router.get('/:id', (req, res) => {
 
   const totalPlayers = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 
-  return res.json({ ...user, stats, rank, totalPlayers });
+  // S5: email visible uniquement par le propriétaire (RGPD)
+  const isOwner = req.userId === req.params.id;
+  const { email, ...publicUser } = user;
+  const responseUser = isOwner ? user : publicUser;
+
+  return res.json({ ...responseUser, stats, rank, totalPlayers });
 });
 
 // GET /api/users/:id/history — historique des pronos de l'utilisateur (?phase=groupe&result=exact)
@@ -198,9 +227,15 @@ router.get('/:id/history', (req, res) => {
   return res.json(pronos);
 });
 
-// DELETE /api/users/:id — suppression de compte (RGPD)
-router.delete('/:id', (req, res) => {
+// DELETE /api/users/:id — suppression de compte (RGPD, auth requise)
+router.delete('/:id', requireAuth, (req, res) => {
   const userId = req.params.id;
+
+  // S6: seul le propriétaire peut supprimer son compte
+  if (req.userId !== userId) {
+    return res.status(403).json({ error: 'Non autorisé.' });
+  }
+
   const { confirm_pseudo } = req.body;
 
   const user = db.prepare('SELECT id, pseudo FROM users WHERE id = ?').get(userId);

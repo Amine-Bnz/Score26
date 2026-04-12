@@ -4,6 +4,19 @@
 // En prod : VITE_API_URL = 'https://ton-backend.fly.dev' → URL absolue vers Fly.io
 const BASE = (import.meta.env.VITE_API_URL ?? '') + '/api'
 
+// Récupère le JWT stocké en localStorage
+function getToken() {
+  try { return localStorage.getItem('score26_token') } catch { return null }
+}
+
+// Headers avec auth JWT
+function authHeaders() {
+  const token = getToken()
+  const h = { 'Content-Type': 'application/json' }
+  if (token) h['Authorization'] = `Bearer ${token}`
+  return h
+}
+
 // Wrapper : parse le JSON et retourne { error, status } si la réponse n'est pas OK
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}))
@@ -40,11 +53,11 @@ export async function verifyToken(token) {
   return handleResponse(res)
 }
 
-export async function secureAccount({ user_id, email, password }) {
+export async function secureAccount({ email, password }) {
   const res = await fetch(`${BASE}/auth/secure`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, email, password }),
+    headers: authHeaders(),
+    body: JSON.stringify({ email, password }),
   })
   return handleResponse(res)
 }
@@ -59,7 +72,10 @@ export async function createUser({ id, pseudo, avatar_seed }) {
 }
 
 export async function getUser(id) {
-  const res = await fetch(`${BASE}/users/${id}`)
+  const token = getToken()
+  const h = {}
+  if (token) h['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}/users/${id}`, { headers: h })
   return handleResponse(res)
 }
 
@@ -72,10 +88,11 @@ export async function getUserHistory(userId, { phase, result } = {}) {
   return handleResponse(res)
 }
 
-export async function deleteAccount({ user_id, confirm_pseudo }) {
-  const res = await fetch(`${BASE}/users/${user_id}`, {
+export async function deleteAccount({ confirm_pseudo }) {
+  const userId = localStorage.getItem('score26_user_id')
+  const res = await fetch(`${BASE}/users/${userId}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ confirm_pseudo }),
   })
   return handleResponse(res)
@@ -89,8 +106,8 @@ export async function getMatchs(userId) {
 export async function upsertProno({ user_id, match_id, score_predit_a, score_predit_b }) {
   const res = await fetch(`${BASE}/pronos`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, match_id, score_predit_a, score_predit_b }),
+    headers: authHeaders(),
+    body: JSON.stringify({ match_id, score_predit_a, score_predit_b }),
   })
   return handleResponse(res)
 }
@@ -100,11 +117,11 @@ export async function getVapidPublicKey() {
   return handleResponse(res)
 }
 
-export async function subscribePush({ user_id, subscription }) {
+export async function subscribePush({ subscription }) {
   const res = await fetch(`${BASE}/push/subscribe`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, subscription }),
+    headers: authHeaders(),
+    body: JSON.stringify({ subscription }),
   })
   return handleResponse(res)
 }
@@ -123,11 +140,11 @@ export async function getNotifSettings(userId) {
   return handleResponse(res)
 }
 
-export async function updateNotifDelay({ user_id, notif_delay }) {
+export async function updateNotifDelay({ notif_delay }) {
   const res = await fetch(`${BASE}/push/settings`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, notif_delay }),
+    headers: authHeaders(),
+    body: JSON.stringify({ notif_delay }),
   })
   return handleResponse(res)
 }
@@ -139,11 +156,11 @@ export async function getFriendRanking(userId) {
   return handleResponse(res)
 }
 
-export async function addFriend({ user_id, friend_code }) {
+export async function addFriend({ friend_code }) {
   const res = await fetch(`${BASE}/friends`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, friend_code }),
+    headers: authHeaders(),
+    body: JSON.stringify({ friend_code }),
   })
   return handleResponse(res)
 }
@@ -153,11 +170,11 @@ export async function getFriendPronos(userId, matchId) {
   return handleResponse(res)
 }
 
-export async function toggleReaction(reactorId, targetUserId, matchId, emoji) {
+export async function toggleReaction(targetUserId, matchId, emoji) {
   const res = await fetch(`${BASE}/reactions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reactor_id: reactorId, target_user_id: targetUserId, match_id: matchId, emoji }),
+    headers: authHeaders(),
+    body: JSON.stringify({ target_user_id: targetUserId, match_id: matchId, emoji }),
   })
   return handleResponse(res)
 }
@@ -172,11 +189,11 @@ export async function compareFriend(userId, friendId) {
   return handleResponse(res)
 }
 
-export async function removeFriend({ user_id, friendId }) {
+export async function removeFriend({ friendId }) {
   const res = await fetch(`${BASE}/friends/${friendId}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id }),
+    headers: authHeaders(),
+    body: JSON.stringify({}),
   })
   return handleResponse(res)
 }
@@ -206,38 +223,38 @@ export async function getMyChallenges(userId) {
   return handleResponse(res)
 }
 
-export async function createChallenge({ user_id, opponent_id, match_id }) {
+export async function createChallenge({ opponent_id, match_id }) {
   const res = await fetch(`${BASE}/challenges`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, opponent_id, match_id }),
+    headers: authHeaders(),
+    body: JSON.stringify({ opponent_id, match_id }),
   })
   return handleResponse(res)
 }
 
-export async function acceptChallenge({ challengeId, user_id }) {
+export async function acceptChallenge({ challengeId }) {
   const res = await fetch(`${BASE}/challenges/${challengeId}/accept`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id }),
+    headers: authHeaders(),
+    body: JSON.stringify({}),
   })
   return handleResponse(res)
 }
 
-export async function declineChallenge({ challengeId, user_id }) {
+export async function declineChallenge({ challengeId }) {
   const res = await fetch(`${BASE}/challenges/${challengeId}/decline`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id }),
+    headers: authHeaders(),
+    body: JSON.stringify({}),
   })
   return handleResponse(res)
 }
 
-export async function cancelChallenge({ challengeId, user_id }) {
+export async function cancelChallenge({ challengeId }) {
   const res = await fetch(`${BASE}/challenges/${challengeId}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id }),
+    headers: authHeaders(),
+    body: JSON.stringify({}),
   })
   return handleResponse(res)
 }
@@ -249,11 +266,11 @@ export async function getBonusPronos(userId) {
   return handleResponse(res)
 }
 
-export async function saveBonusProno({ user_id, type, value }) {
+export async function saveBonusProno({ type, value }) {
   const res = await fetch(`${BASE}/bonus`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, type, value }),
+    headers: authHeaders(),
+    body: JSON.stringify({ type, value }),
   })
   return handleResponse(res)
 }
@@ -270,29 +287,29 @@ export async function getGroupRanking(groupId) {
   return handleResponse(res)
 }
 
-export async function createGroup({ user_id, name }) {
+export async function createGroup({ name }) {
   const res = await fetch(`${BASE}/groups`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, name }),
+    headers: authHeaders(),
+    body: JSON.stringify({ name }),
   })
   return handleResponse(res)
 }
 
-export async function joinGroup({ user_id, invite_code }) {
+export async function joinGroup({ invite_code }) {
   const res = await fetch(`${BASE}/groups/join`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, invite_code }),
+    headers: authHeaders(),
+    body: JSON.stringify({ invite_code }),
   })
   return handleResponse(res)
 }
 
-export async function leaveGroup({ user_id, groupId }) {
+export async function leaveGroup({ groupId }) {
   const res = await fetch(`${BASE}/groups/${groupId}/leave`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id }),
+    headers: authHeaders(),
+    body: JSON.stringify({}),
   })
   return handleResponse(res)
 }

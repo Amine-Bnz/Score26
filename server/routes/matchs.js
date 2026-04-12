@@ -1,11 +1,17 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
+const { UUID_REGEX } = require('../middleware/validate');
 
 // GET /api/matchs?user_id=xxx
 // Retourne tous les matchs avec : prono de l'user, données live si en cours
 router.get('/', (req, res) => {
   const { user_id } = req.query;
+
+  // S8: valider le format UUID si fourni
+  if (user_id && !UUID_REGEX.test(user_id)) {
+    return res.status(400).json({ error: 'Identifiant invalide.' });
+  }
 
   const matchs = db.prepare(`
     SELECT

@@ -3,12 +3,13 @@ const { describe, test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 const request = require('supertest');
+const jwt = require('jsonwebtoken');
 const { createTestDb } = require('./helpers/db');
 
 const USER_ID = 'test-player';
 
 describe('pronos', { concurrency: false }, () => {
-  let db, app, futureMatchId, pastMatchId, upsertMatchId;
+  let db, app, futureMatchId, pastMatchId, upsertMatchId, token;
 
   before(() => {
     db = createTestDb();
@@ -19,6 +20,12 @@ describe('pronos', { concurrency: false }, () => {
 
     // Charger la route fraîchement
     delete require.cache[require.resolve('../routes/pronos')];
+    delete require.cache[require.resolve('../middleware/auth')];
+    delete require.cache[require.resolve('../config/jwt')];
+
+    // Générer un token JWT de test
+    const { JWT_SECRET } = require('../config/jwt');
+    token = jwt.sign({ userId: USER_ID }, JWT_SECRET, { expiresIn: '1h' });
 
     app = express();
     app.use(express.json());
@@ -48,90 +55,99 @@ describe('pronos', { concurrency: false }, () => {
     db.close();
     delete require.cache[require.resolve('../database')];
     delete require.cache[require.resolve('../routes/pronos')];
+    delete require.cache[require.resolve('../middleware/auth')];
+    delete require.cache[require.resolve('../config/jwt')];
   });
 
   // ── POST /api/pronos ──────────────────────────────────────────────────────
 
   test('prono valide → 201', async () => {
-    const res = await request(app).post('/api/pronos').send({
-      user_id: USER_ID,
-      match_id: futureMatchId,
-      score_predit_a: 2,
-      score_predit_b: 1,
-    });
+    const res = await request(app).post('/api/pronos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        match_id: futureMatchId,
+        score_predit_a: 2,
+        score_predit_b: 1,
+      });
     assert.equal(res.status, 201);
     assert.equal(res.body.score_predit_a, 2);
     assert.equal(res.body.score_predit_b, 1);
   });
 
   test('upsert (deuxième POST même user+match) → 201 avec nouvelles valeurs', async () => {
-    const res = await request(app).post('/api/pronos').send({
-      user_id: USER_ID,
-      match_id: upsertMatchId,
-      score_predit_a: 3,
-      score_predit_b: 2,
-    });
+    const res = await request(app).post('/api/pronos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        match_id: upsertMatchId,
+        score_predit_a: 3,
+        score_predit_b: 2,
+      });
     assert.equal(res.status, 201);
     assert.equal(res.body.score_predit_a, 3);
     assert.equal(res.body.score_predit_b, 2);
   });
 
   test('score négatif → 400', async () => {
-    const res = await request(app).post('/api/pronos').send({
-      user_id: USER_ID,
-      match_id: futureMatchId,
-      score_predit_a: -1,
-      score_predit_b: 0,
-    });
+    const res = await request(app).post('/api/pronos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        match_id: futureMatchId,
+        score_predit_a: -1,
+        score_predit_b: 0,
+      });
     assert.equal(res.status, 400);
   });
 
   test('score > 99 → 400', async () => {
-    const res = await request(app).post('/api/pronos').send({
-      user_id: USER_ID,
-      match_id: futureMatchId,
-      score_predit_a: 100,
-      score_predit_b: 0,
-    });
+    const res = await request(app).post('/api/pronos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        match_id: futureMatchId,
+        score_predit_a: 100,
+        score_predit_b: 0,
+      });
     assert.equal(res.status, 400);
   });
 
   test('score non-entier ("abc") → 400', async () => {
-    const res = await request(app).post('/api/pronos').send({
-      user_id: USER_ID,
-      match_id: futureMatchId,
-      score_predit_a: 'abc',
-      score_predit_b: 0,
-    });
+    const res = await request(app).post('/api/pronos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        match_id: futureMatchId,
+        score_predit_a: 'abc',
+        score_predit_b: 0,
+      });
     assert.equal(res.status, 400);
   });
 
   test("match verrouillé (coup d'envoi passé) → 403", async () => {
-    const res = await request(app).post('/api/pronos').send({
-      user_id: USER_ID,
-      match_id: pastMatchId,
-      score_predit_a: 1,
-      score_predit_b: 0,
-    });
+    const res = await request(app).post('/api/pronos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        match_id: pastMatchId,
+        score_predit_a: 1,
+        score_predit_b: 0,
+      });
     assert.equal(res.status, 403);
   });
 
   test('match inexistant → 404', async () => {
-    const res = await request(app).post('/api/pronos').send({
-      user_id: USER_ID,
-      match_id: 999999,
-      score_predit_a: 1,
-      score_predit_b: 0,
-    });
+    const res = await request(app).post('/api/pronos')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        match_id: 999999,
+        score_predit_a: 1,
+        score_predit_b: 0,
+      });
     assert.equal(res.status, 404);
   });
 
-  test('champs manquants (sans user_id) → 400', async () => {
+  test('sans token → 401', async () => {
     const res = await request(app).post('/api/pronos').send({
       match_id: futureMatchId,
       score_predit_a: 1,
       score_predit_b: 0,
     });
-    assert.equal(res.status, 400);
+    assert.equal(res.status, 401);
   });
 });

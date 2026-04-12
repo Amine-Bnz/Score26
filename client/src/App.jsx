@@ -4,11 +4,11 @@ import Header from './components/Header'
 import Navbar from './components/Navbar'
 import OfflineBanner from './components/OfflineBanner'
 import Onboarding from './pages/Onboarding'
-import MatchsAvenir from './pages/MatchsAvenir'
-import MatchsPasses from './pages/MatchsPasses'
 
-const Profil = lazy(() => import('./pages/Profil'))
-const Amis   = lazy(() => import('./pages/Amis'))
+const MatchsAvenir = lazy(() => import('./pages/MatchsAvenir'))
+const MatchsPasses = lazy(() => import('./pages/MatchsPasses'))
+const Profil       = lazy(() => import('./pages/Profil'))
+const Amis         = lazy(() => import('./pages/Amis'))
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import { getMatchs, getUser } from './api'
@@ -62,9 +62,15 @@ export default function App() {
   const resultToastQueue = useRef([])
 
   // Récupération de l'identité persistée en localStorage + deep-links
+  // Si l'user a un ID mais pas de token, forcer re-onboarding (sécurité)
   useEffect(() => {
     const id = lsGet('score26_user_id', null)
-    if (id) setUserId(id)
+    const token = lsGet('score26_token', null)
+    if (id && token) setUserId(id)
+    else if (id && !token) {
+      // Ancien user sans token — supprimer et forcer re-onboarding
+      try { localStorage.removeItem('score26_user_id'); localStorage.removeItem('score26_pseudo') } catch {}
+    }
 
     // Parser les deep-links : /invite/CODE ou /group/CODE
     const path = window.location.pathname
@@ -183,6 +189,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen max-w-md mx-auto relative">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-accent focus:text-surface-950 focus:rounded-lg focus:text-sm focus:font-semibold">
+        {lang === 'fr' ? 'Aller au contenu' : 'Skip to content'}
+      </a>
       {!isOnline && <OfflineBanner lang={lang} />}
       <Header
         lang={lang}
@@ -193,10 +202,10 @@ export default function App() {
         synced={synced}
       />
 
-      <main className="pb-nav px-4 pt-3 overflow-hidden">
-        {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} initialData={prefetchedMatchs} /></div>}
-        {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} initialData={prefetchedMatchs} /></div>}
+      <main id="main-content" className="pb-nav px-4 pt-3 overflow-hidden">
         <Suspense fallback={<div className="flex justify-center py-20 text-surface-400">…</div>}>
+          {page === 'avenir' && <div key="avenir" className={`page-slide-${slideDir}`}><MatchsAvenir userId={userId} lang={lang} isOnline={isOnline} initialData={prefetchedMatchs} /></div>}
+          {page === 'passes' && <div key="passes" className={`page-slide-${slideDir}`}><MatchsPasses userId={userId} lang={lang} initialData={prefetchedMatchs} /></div>}
           {page === 'amis'   && <div key="amis"   className={`page-slide-${slideDir}`}><Amis         userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink} onDeepLinkHandled={() => setDeepLink(null)} /></div>}
           {page === 'profil' && <div key="profil" className={`page-slide-${slideDir}`}><Profil       userId={userId} lang={lang} friendCode={friendCode} theme={theme} onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} /></div>}
         </Suspense>
@@ -205,14 +214,16 @@ export default function App() {
       <Navbar page={page} onNavigate={navigateTo} lang={lang} />
 
       {/* Toast résultat de prono */}
-      {resultToast && (
-        <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg animate-fade-in max-w-[90vw] text-center
-          ${resultToast.type === 'exact' ? 'bg-result-exact/90 text-white' :
-            resultToast.type === 'good' ? 'bg-accent/90 text-surface-950' :
-            'bg-result-miss/90 text-white'}`}>
-          {resultToast.msg}
-        </div>
-      )}
+      <div aria-live="polite" aria-atomic="true">
+        {resultToast && (
+          <div className={`fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg animate-fade-in max-w-[90vw] text-center
+            ${resultToast.type === 'exact' ? 'bg-result-exact/90 text-white' :
+              resultToast.type === 'good' ? 'bg-accent/90 text-surface-950' :
+              'bg-result-miss/90 text-white'}`}>
+            {resultToast.msg}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

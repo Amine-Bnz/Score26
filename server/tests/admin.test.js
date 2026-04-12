@@ -124,7 +124,7 @@ describe('admin routes', { concurrency: false }, () => {
       process.env.ADMIN_TOKEN = original;
     });
 
-    test('accepte avec bon token en query', () => {
+    test('rejette token en query param (S3: header uniquement)', () => {
       delete require.cache[require.resolve('../routes/admin')];
       const adminRouter = require('../routes/admin');
       const getMatchsRoute = adminRouter.stack.find(l => l.route?.path === '/matchs' && l.route?.methods?.get);
@@ -134,7 +134,8 @@ describe('admin routes', { concurrency: false }, () => {
       const res = mockRes();
       let nextCalled = false;
       middleware(req, res, () => { nextCalled = true; });
-      assert.equal(nextCalled, true);
+      assert.equal(res._status, 401);
+      assert.equal(nextCalled, false);
     });
 
     test('accepte avec bon token en header', () => {

@@ -2,6 +2,11 @@ const express   = require('express')
 const rateLimit = require('express-rate-limit')
 const router    = express.Router()
 const db        = require('../database')
+const { requireAuth } = require('../middleware/auth')
+const { validateUUIDParam } = require('../middleware/validate')
+
+// S8: valider le format UUID sur le paramètre :userId
+router.param('userId', validateUUIDParam)
 
 // 10 abonnements push max par IP sur 15 minutes
 const limiterPush = rateLimit({
@@ -21,12 +26,13 @@ router.get('/vapid-public-key', (req, res) => {
   return res.json({ publicKey: key })
 })
 
-// POST /api/push/subscribe — enregistre ou met à jour une subscription push
-// Body : { user_id, subscription: { endpoint, keys: { p256dh, auth } } }
-router.post('/subscribe', limiterPush, (req, res) => {
-  const { user_id, subscription } = req.body
-  if (!user_id || !subscription?.endpoint || !subscription?.keys?.p256dh) {
-    return res.status(400).json({ error: 'user_id et subscription (endpoint + keys) requis.' })
+// POST /api/push/subscribe — enregistre ou met à jour une subscription push (auth requise)
+// Body : { subscription: { endpoint, keys: { p256dh, auth } } }
+router.post('/subscribe', limiterPush, requireAuth, (req, res) => {
+  const user_id = req.userId
+  const { subscription } = req.body
+  if (!subscription?.endpoint || !subscription?.keys?.p256dh) {
+    return res.status(400).json({ error: 'subscription (endpoint + keys) requis.' })
   }
 
   // UPSERT : si l'endpoint existe déjà, on met à jour les clés et le user_id
@@ -51,11 +57,12 @@ router.delete('/unsubscribe', (req, res) => {
   return res.json({ ok: true })
 })
 
-// PATCH /api/push/settings — met à jour le délai de rappel
-// Body : { user_id, notif_delay } (30, 60, 120, 180)
-router.patch('/settings', (req, res) => {
-  const { user_id, notif_delay } = req.body
-  if (!user_id || !notif_delay) return res.status(400).json({ error: 'user_id et notif_delay requis.' })
+// PATCH /api/push/settings — met à jour le délai de rappel (auth requise)
+// Body : { notif_delay } (30, 60, 120, 180)
+router.patch('/settings', requireAuth, (req, res) => {
+  const user_id = req.userId
+  const { notif_delay } = req.body
+  if (!notif_delay) return res.status(400).json({ error: 'notif_delay requis.' })
   const allowed = [30, 60, 120, 180]
   if (!allowed.includes(notif_delay)) return res.status(400).json({ error: 'Délai invalide.' })
   db.prepare('UPDATE push_subscriptions SET notif_delay = ? WHERE user_id = ?').run(notif_delay, user_id)

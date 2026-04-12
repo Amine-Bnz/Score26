@@ -5,7 +5,7 @@
       "namespace": "android_app",
       "package_name": "app.vercel.score26.twa",
       "sha256_cert_fingerprints": [
-        "PLACEHOLDER_SHA256_FINGERPRINT"
+        "__REMPLACER_PAR_EMPREINTE_SHA256_DU_KEYSTORE__"
       ]
     }
   }

@@ -62,7 +62,7 @@ export default function BonusPronos({ userId, lang, matchs = [], isOnline = true
   async function save(type, value) {
     if (!value || !isOnline) return
     setSaving(type)
-    const res = await saveBonusProno({ user_id: userId, type, value })
+    const res = await saveBonusProno({ type, value })
     setSaving(null)
     if (res.error) { setToast(res.error); setTimeout(() => setToast(''), 2500); return }
     setPronos(prev => ({ ...prev, [type]: { ...prev[type], type, value, locked: 0 } }))
@@ -92,9 +92,11 @@ export default function BonusPronos({ userId, lang, matchs = [], isOnline = true
       </button>
 
       {/* Toast */}
-      {toast && (
-        <div className="text-center text-xs font-medium text-accent py-1 animate-pulse">{toast}</div>
-      )}
+      <div aria-live="polite" aria-atomic="true">
+        {toast && (
+          <div className="text-center text-xs font-medium text-accent py-1 animate-pulse">{toast}</div>
+        )}
+      </div>
 
       {/* Contenu */}
       {open && (
@@ -187,6 +189,7 @@ function TeamSelect({ teams, value, locked, placeholder, onChange, saving }) {
       value={value}
       onChange={e => onChange(e.target.value)}
       disabled={saving}
+      aria-label={placeholder}
       className="w-full px-3 py-2 rounded-xl bg-white dark:bg-surface-800 text-surface-900 dark:text-white text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent border border-surface-200 dark:border-surface-700 disabled:opacity-50"
     >
       <option value="">{placeholder}</option>
@@ -216,6 +219,7 @@ function TextInput({ value: initialValue, locked, placeholder, onSubmit, saving,
         value={val}
         onChange={e => setVal(e.target.value)}
         placeholder={placeholder}
+        aria-label={placeholder}
         disabled={saving}
         className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-surface-800 text-surface-900 dark:text-white text-xs placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent border border-surface-200 dark:border-surface-700 disabled:opacity-50"
       />

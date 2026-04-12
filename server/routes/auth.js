@@ -4,12 +4,8 @@ const jwt      = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const router   = express.Router();
 const db       = require('../database');
-
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  throw new Error('JWT_SECRET est requis en production. Définir la variable d\'environnement JWT_SECRET.');
-}
-const JWT_SECRET = process.env.JWT_SECRET || 'score26-dev-secret-change-me';
-const JWT_EXPIRES = '30d';
+const { JWT_SECRET, JWT_EXPIRES } = require('../config/jwt');
+const { requireAuth } = require('../middleware/auth');
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -107,12 +103,13 @@ router.get('/me', (req, res) => {
   }
 });
 
-// POST /api/auth/secure — lier email/password à un compte UUID existant
-router.post('/secure', limiter, async (req, res) => {
-  const { user_id, email, password } = req.body;
+// POST /api/auth/secure — lier email/password à un compte UUID existant (auth requise)
+router.post('/secure', limiter, requireAuth, async (req, res) => {
+  const user_id = req.userId;
+  const { email, password } = req.body;
 
-  if (!user_id || !email || !password) {
-    return res.status(400).json({ error: 'user_id, email et password requis.' });
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email et password requis.' });
   }
 
   const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

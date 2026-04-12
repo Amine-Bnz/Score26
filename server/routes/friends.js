@@ -1,6 +1,12 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
+const { requireAuth } = require('../middleware/auth');
+const { validateUUIDParam } = require('../middleware/validate');
+
+// S8: valider le format UUID sur les paramètres :userId et :friendId
+router.param('userId', validateUUIDParam);
+router.param('friendId', validateUUIDParam);
 
 // GET /api/friends/:userId — liste des amis avec scores (?page=1&limit=30)
 router.get('/:userId', (req, res) => {
@@ -168,12 +174,13 @@ router.get('/:userId/compare/:friendId', (req, res) => {
   });
 });
 
-// POST /api/friends — ajouter un ami par code (bidirectionnel)
-router.post('/', (req, res) => {
-  const { user_id, friend_code } = req.body;
+// POST /api/friends — ajouter un ami par code (bidirectionnel, auth requise)
+router.post('/', requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const { friend_code } = req.body;
 
-  if (!user_id || !friend_code) {
-    return res.status(400).json({ error: 'user_id et friend_code requis.' });
+  if (!friend_code) {
+    return res.status(400).json({ error: 'friend_code requis.' });
   }
 
   const friend = db.prepare('SELECT id, pseudo FROM users WHERE friend_code = ?').get(friend_code.toUpperCase().trim());
@@ -199,14 +206,10 @@ router.post('/', (req, res) => {
   return res.status(201).json({ friend_id: friend.id, pseudo: friend.pseudo });
 });
 
-// DELETE /api/friends/:friendId — retirer un ami (bidirectionnel)
-router.delete('/:friendId', (req, res) => {
-  const { user_id } = req.body;
+// DELETE /api/friends/:friendId — retirer un ami (bidirectionnel, auth requise)
+router.delete('/:friendId', requireAuth, (req, res) => {
+  const user_id = req.userId;
   const friendId = req.params.friendId;
-
-  if (!user_id) {
-    return res.status(400).json({ error: 'user_id requis.' });
-  }
 
   const del = db.prepare('DELETE FROM friendships WHERE user_id = ? AND friend_id = ?');
   db.transaction(() => {
