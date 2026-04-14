@@ -156,11 +156,53 @@ export async function getFriendRanking(userId) {
   return handleResponse(res)
 }
 
+export async function previewFriend(code) {
+  const res = await fetch(`${BASE}/friends/preview/${encodeURIComponent(code)}`)
+  return handleResponse(res)
+}
+
 export async function addFriend({ friend_code }) {
   const res = await fetch(`${BASE}/friends`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ friend_code }),
+  })
+  return handleResponse(res)
+}
+
+export async function getFriendRequests(userId) {
+  const res = await fetch(`${BASE}/friends/${userId}/requests`)
+  return handleResponse(res)
+}
+
+export async function getSentRequests(userId) {
+  const res = await fetch(`${BASE}/friends/${userId}/sent`)
+  return handleResponse(res)
+}
+
+export async function acceptFriendRequest(friendId) {
+  const res = await fetch(`${BASE}/friends/${friendId}/accept`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({}),
+  })
+  return handleResponse(res)
+}
+
+export async function declineFriendRequest(friendId) {
+  const res = await fetch(`${BASE}/friends/${friendId}/decline`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({}),
+  })
+  return handleResponse(res)
+}
+
+export async function cancelFriendRequest(friendId) {
+  const res = await fetch(`${BASE}/friends/${friendId}/cancel`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+    body: JSON.stringify({}),
   })
   return handleResponse(res)
 }
@@ -287,6 +329,11 @@ export async function getGroupRanking(groupId) {
   return handleResponse(res)
 }
 
+export async function previewGroup(code) {
+  const res = await fetch(`${BASE}/groups/preview/${encodeURIComponent(code)}`)
+  return handleResponse(res)
+}
+
 export async function createGroup({ name }) {
   const res = await fetch(`${BASE}/groups`, {
     method: 'POST',
@@ -311,5 +358,53 @@ export async function leaveGroup({ groupId }) {
     headers: authHeaders(),
     body: JSON.stringify({}),
   })
+  return handleResponse(res)
+}
+
+export async function getGroupMembers(groupId) {
+  const res = await fetch(`${BASE}/groups/${groupId}/members`)
+  return handleResponse(res)
+}
+
+export async function kickGroupMember({ groupId, userId }) {
+  const res = await fetch(`${BASE}/groups/${groupId}/member/${userId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+    body: JSON.stringify({}),
+  })
+  return handleResponse(res)
+}
+
+export async function regenerateGroupCode({ groupId }) {
+  const res = await fetch(`${BASE}/groups/${groupId}/regenerate-code`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({}),
+  })
+  return handleResponse(res)
+}
+
+// ── Blocage ──────────────────────────────────────────────────────────────────
+
+export async function blockUser({ blockedId }) {
+  const res = await fetch(`${BASE}/blocks`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ blocked_id: blockedId }),
+  })
+  return handleResponse(res)
+}
+
+export async function unblockUser(blockedId) {
+  const res = await fetch(`${BASE}/blocks/${blockedId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+    body: JSON.stringify({}),
+  })
+  return handleResponse(res)
+}
+
+export async function getBlockList(userId) {
+  const res = await fetch(`${BASE}/blocks/${userId}`)
   return handleResponse(res)
 }

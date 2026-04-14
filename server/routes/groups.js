@@ -42,6 +42,61 @@ router.get('/:groupId/ranking', (req, res) => {
   return res.json(ranking);
 });
 
+// GET /api/groups/:groupId/members — liste des membres d'un groupe
+router.get('/:groupId/members', (req, res) => {
+  const group = db.prepare('SELECT owner_id FROM groups_ WHERE id = ?').get(req.params.groupId);
+  if (!group) return res.status(404).json({ error: 'Groupe introuvable.' });
+
+  const members = db.prepare(`
+    SELECT u.id, u.pseudo, u.avatar_seed, gm.joined_at,
+      CASE WHEN u.id = ? THEN 1 ELSE 0 END AS is_owner
+    FROM group_members gm
+    JOIN users u ON u.id = gm.user_id
+    WHERE gm.group_id = ?
+    ORDER BY gm.joined_at ASC
+  `).all(group.owner_id, req.params.groupId);
+
+  return res.json(members);
+});
+
+// DELETE /api/groups/:groupId/member/:userId — expulser un membre (owner uniquement, auth requise)
+router.delete('/:groupId/member/:userId', requireAuth, (req, res) => {
+  const caller = req.userId;
+  const { groupId, userId } = req.params;
+
+  const group = db.prepare('SELECT owner_id FROM groups_ WHERE id = ?').get(groupId);
+  if (!group) return res.status(404).json({ error: 'Groupe introuvable.' });
+  if (group.owner_id !== caller) return res.status(403).json({ error: 'Seul le propriétaire peut expulser.' });
+  if (userId === caller) return res.status(400).json({ error: 'Tu ne peux pas t\'expulser toi-même.' });
+
+  const member = db.prepare('SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?').get(groupId, userId);
+  if (!member) return res.status(404).json({ error: 'Ce membre n\'est pas dans le groupe.' });
+
+  db.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ?').run(groupId, userId);
+  return res.json({ ok: true });
+});
+
+// POST /api/groups/:groupId/regenerate-code — régénérer le code d'invitation (owner, auth requise)
+router.post('/:groupId/regenerate-code', requireAuth, (req, res) => {
+  const caller = req.userId;
+  const groupId = req.params.groupId;
+
+  const group = db.prepare('SELECT owner_id FROM groups_ WHERE id = ?').get(groupId);
+  if (!group) return res.status(404).json({ error: 'Groupe introuvable.' });
+  if (group.owner_id !== caller) return res.status(403).json({ error: 'Seul le propriétaire peut régénérer le code.' });
+
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const existing = new Set(db.prepare('SELECT invite_code FROM groups_').all().map(r => r.invite_code));
+  let invite_code;
+  do {
+    invite_code = '';
+    for (let i = 0; i < 6; i++) invite_code += chars[crypto.randomInt(chars.length)];
+  } while (existing.has(invite_code));
+
+  db.prepare('UPDATE groups_ SET invite_code = ? WHERE id = ?').run(invite_code, groupId);
+  return res.json({ invite_code });
+});
+
 // POST /api/groups — créer un groupe (auth requise)
 router.post('/', requireAuth, (req, res) => {
   const user_id = req.userId;
@@ -49,6 +104,12 @@ router.post('/', requireAuth, (req, res) => {
 
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'name requis.' });
+  }
+
+  // Limite de 10 groupes par utilisateur
+  const groupCount = db.prepare('SELECT COUNT(*) AS c FROM group_members WHERE user_id = ?').get(user_id)?.c ?? 0;
+  if (groupCount >= 10) {
+    return res.status(400).json({ error: 'Limite de 10 groupes atteinte.' });
   }
 
   const trimmed = name.trim().slice(0, 30);
@@ -71,6 +132,23 @@ router.post('/', requireAuth, (req, res) => {
   return res.status(201).json({ id, name: trimmed, invite_code, owner_id: user_id, member_count: 1 });
 });
 
+// GET /api/groups/preview/:code — aperçu d'un groupe par invite_code (sans rejoindre)
+router.get('/preview/:code', (req, res) => {
+  const code = (req.params.code || '').toUpperCase().trim();
+  if (!code) return res.status(400).json({ error: 'Code requis.' });
+
+  const group = db.prepare(`
+    SELECT g.name, COUNT(gm.user_id) AS member_count
+    FROM groups_ g
+    LEFT JOIN group_members gm ON gm.group_id = g.id
+    WHERE g.invite_code = ?
+    GROUP BY g.id
+  `).get(code);
+  if (!group) return res.status(404).json({ error: 'Code de groupe invalide.' });
+
+  return res.json({ name: group.name, member_count: group.member_count });
+});
+
 // POST /api/groups/join — rejoindre un groupe via invite_code (auth requise)
 router.post('/join', requireAuth, (req, res) => {
   const user_id = req.userId;
@@ -88,6 +166,12 @@ router.post('/join', requireAuth, (req, res) => {
   const already = db.prepare('SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?').get(group.id, user_id);
   if (already) {
     return res.status(409).json({ error: 'Tu es déjà dans ce groupe.' });
+  }
+
+  // Limite de 10 groupes par utilisateur
+  const groupCount = db.prepare('SELECT COUNT(*) AS c FROM group_members WHERE user_id = ?').get(user_id)?.c ?? 0;
+  if (groupCount >= 10) {
+    return res.status(400).json({ error: 'Limite de 10 groupes atteinte.' });
   }
 
   db.prepare('INSERT INTO group_members (group_id, user_id) VALUES (?, ?)').run(group.id, user_id);

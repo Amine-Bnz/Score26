@@ -107,6 +107,7 @@ app.use('/api/push',     require('./routes/push'));
 app.use('/api/bonus',    require('./routes/bonus'));
 app.use('/api/admin',    require('./routes/admin'));
 app.use('/api/reactions', require('./routes/reactions'));
+app.use('/api/blocks',    require('./routes/blocks'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

@@ -14,7 +14,7 @@ router.get('/:userId', (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30));
   const offset = (page - 1) * limit;
 
-  const total = db.prepare('SELECT COUNT(*) AS c FROM friendships WHERE user_id = ?').get(req.params.userId)?.c ?? 0;
+  const total = db.prepare("SELECT COUNT(*) AS c FROM friendships WHERE user_id = ? AND status = 'accepted'").get(req.params.userId)?.c ?? 0;
 
   const friends = db.prepare(`
     SELECT u.id, u.pseudo, u.avatar_seed,
@@ -22,7 +22,7 @@ router.get('/:userId', (req, res) => {
     FROM friendships f
     JOIN users u ON u.id = f.friend_id
     LEFT JOIN pronos p ON p.user_id = u.id AND p.points_obtenus IS NOT NULL
-    WHERE f.user_id = ?
+    WHERE f.user_id = ? AND f.status = 'accepted'
     GROUP BY u.id
     ORDER BY score_total DESC
     LIMIT ? OFFSET ?
@@ -38,7 +38,7 @@ router.get('/:userId/ranking', (req, res) => {
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
   const offset = (page - 1) * limit;
 
-  const friendIds = db.prepare('SELECT friend_id FROM friendships WHERE user_id = ?')
+  const friendIds = db.prepare("SELECT friend_id FROM friendships WHERE user_id = ? AND status = 'accepted'")
     .all(userId)
     .map(r => r.friend_id);
 
@@ -81,7 +81,7 @@ router.get('/:userId/pronos/:matchId', (req, res) => {
     JOIN users u ON u.id = f.friend_id
     JOIN pronos p ON p.user_id = u.id AND p.match_id = ?
     LEFT JOIN prono_reactions pr ON pr.target_user_id = u.id AND pr.match_id = ? AND pr.reactor_id = ?
-    WHERE f.user_id = ?
+    WHERE f.user_id = ? AND f.status = 'accepted'
     ORDER BY u.pseudo
   `).all(mid, mid, userId, userId);
 
@@ -89,7 +89,7 @@ router.get('/:userId/pronos/:matchId', (req, res) => {
   const counts = db.prepare(`
     SELECT target_user_id, emoji, COUNT(*) as cnt
     FROM prono_reactions
-    WHERE match_id = ? AND target_user_id IN (SELECT friend_id FROM friendships WHERE user_id = ?)
+    WHERE match_id = ? AND target_user_id IN (SELECT friend_id FROM friendships WHERE user_id = ? AND status = 'accepted')
     GROUP BY target_user_id, emoji
   `).all(mid, userId);
 
@@ -111,7 +111,7 @@ router.get('/:userId/history/:friendId', (req, res) => {
   const { userId, friendId } = req.params;
 
   // Vérifier que c'est bien un ami
-  const isFriend = db.prepare('SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?').get(userId, friendId);
+  const isFriend = db.prepare("SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ? AND status = 'accepted'").get(userId, friendId);
   if (!isFriend) {
     return res.status(403).json({ error: 'Cet utilisateur n\'est pas dans tes amis.' });
   }
@@ -136,7 +136,7 @@ router.get('/:userId/history/:friendId', (req, res) => {
 router.get('/:userId/compare/:friendId', (req, res) => {
   const { userId, friendId } = req.params;
 
-  const isFriend = db.prepare('SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?').get(userId, friendId);
+  const isFriend = db.prepare("SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ? AND status = 'accepted'").get(userId, friendId);
   if (!isFriend) {
     return res.status(403).json({ error: 'Cet utilisateur n\'est pas dans tes amis.' });
   }
@@ -174,7 +174,18 @@ router.get('/:userId/compare/:friendId', (req, res) => {
   });
 });
 
-// POST /api/friends — ajouter un ami par code (bidirectionnel, auth requise)
+// GET /api/friends/preview/:code — aperçu d'un utilisateur par friend_code (sans créer d'amitié)
+router.get('/preview/:code', (req, res) => {
+  const code = (req.params.code || '').toUpperCase().trim();
+  if (!code) return res.status(400).json({ error: 'Code requis.' });
+
+  const user = db.prepare('SELECT pseudo, avatar_seed FROM users WHERE friend_code = ?').get(code);
+  if (!user) return res.status(404).json({ error: 'Code invalide.' });
+
+  return res.json({ pseudo: user.pseudo, avatar_seed: user.avatar_seed });
+});
+
+// POST /api/friends — envoyer une demande d'amitié par code (auth requise)
 router.post('/', requireAuth, (req, res) => {
   const user_id = req.userId;
   const { friend_code } = req.body;
@@ -192,18 +203,123 @@ router.post('/', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Tu ne peux pas t\'ajouter toi-même.' });
   }
 
-  const existing = db.prepare('SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?').get(user_id, friend.id);
-  if (existing) {
-    return res.status(409).json({ error: 'Déjà dans tes amis.' });
+  // Vérifier blocage (dans les deux sens) — message générique pour ne pas révéler le blocage
+  const blocked = db.prepare('SELECT 1 FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)').get(friend.id, user_id, user_id, friend.id);
+  if (blocked) {
+    return res.status(404).json({ error: 'Code invalide.' });
   }
 
-  const insert = db.prepare('INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)');
+  const existing = db.prepare('SELECT status FROM friendships WHERE user_id = ? AND friend_id = ?').get(user_id, friend.id);
+  if (existing) {
+    if (existing.status === 'accepted') {
+      return res.status(409).json({ error: 'Déjà dans tes amis.' });
+    }
+    if (existing.status === 'pending') {
+      return res.status(409).json({ error: 'Demande déjà envoyée.' });
+    }
+    if (existing.status === 'pending_received') {
+      // L'autre personne nous a déjà envoyé une demande → accepter automatiquement
+      db.transaction(() => {
+        db.prepare("UPDATE friendships SET status = 'accepted' WHERE user_id = ? AND friend_id = ?").run(user_id, friend.id);
+        db.prepare("UPDATE friendships SET status = 'accepted' WHERE user_id = ? AND friend_id = ?").run(friend.id, user_id);
+      })();
+      return res.status(201).json({ friend_id: friend.id, pseudo: friend.pseudo, status: 'accepted' });
+    }
+  }
+
+  // Limite de 100 amis (accepted + pending)
+  const friendCount = db.prepare("SELECT COUNT(*) AS c FROM friendships WHERE user_id = ? AND status IN ('accepted','pending')").get(user_id)?.c ?? 0;
+  if (friendCount >= 100) {
+    return res.status(400).json({ error: 'Limite de 100 amis atteinte.' });
+  }
+
+  const insert = db.prepare('INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, ?)');
   db.transaction(() => {
-    insert.run(user_id, friend.id);
-    insert.run(friend.id, user_id);
+    insert.run(user_id, friend.id, 'pending');
+    insert.run(friend.id, user_id, 'pending_received');
   })();
 
-  return res.status(201).json({ friend_id: friend.id, pseudo: friend.pseudo });
+  return res.status(201).json({ friend_id: friend.id, pseudo: friend.pseudo, status: 'pending' });
+});
+
+// GET /api/friends/:userId/requests — demandes d'amitié reçues en attente
+router.get('/:userId/requests', (req, res) => {
+  const requests = db.prepare(`
+    SELECT u.id, u.pseudo, u.avatar_seed, f.created_at
+    FROM friendships f
+    JOIN users u ON u.id = f.friend_id
+    WHERE f.user_id = ? AND f.status = 'pending_received'
+    ORDER BY f.created_at DESC
+  `).all(req.params.userId);
+
+  return res.json(requests);
+});
+
+// GET /api/friends/:userId/sent — demandes d'amitié envoyées en attente
+router.get('/:userId/sent', (req, res) => {
+  const sent = db.prepare(`
+    SELECT u.id, u.pseudo, u.avatar_seed, f.created_at
+    FROM friendships f
+    JOIN users u ON u.id = f.friend_id
+    WHERE f.user_id = ? AND f.status = 'pending'
+    ORDER BY f.created_at DESC
+  `).all(req.params.userId);
+
+  return res.json(sent);
+});
+
+// POST /api/friends/:friendId/accept — accepter une demande d'amitié (auth requise)
+router.post('/:friendId/accept', requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const friendId = req.params.friendId;
+
+  const row = db.prepare("SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ? AND status = 'pending_received'").get(user_id, friendId);
+  if (!row) {
+    return res.status(404).json({ error: 'Aucune demande en attente.' });
+  }
+
+  db.transaction(() => {
+    db.prepare("UPDATE friendships SET status = 'accepted' WHERE user_id = ? AND friend_id = ?").run(user_id, friendId);
+    db.prepare("UPDATE friendships SET status = 'accepted' WHERE user_id = ? AND friend_id = ?").run(friendId, user_id);
+  })();
+
+  return res.json({ ok: true });
+});
+
+// POST /api/friends/:friendId/decline — refuser une demande d'amitié (auth requise)
+router.post('/:friendId/decline', requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const friendId = req.params.friendId;
+
+  const row = db.prepare("SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ? AND status = 'pending_received'").get(user_id, friendId);
+  if (!row) {
+    return res.status(404).json({ error: 'Aucune demande en attente.' });
+  }
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM friendships WHERE user_id = ? AND friend_id = ?').run(user_id, friendId);
+    db.prepare('DELETE FROM friendships WHERE user_id = ? AND friend_id = ?').run(friendId, user_id);
+  })();
+
+  return res.json({ ok: true });
+});
+
+// DELETE /api/friends/:friendId/cancel — annuler une demande envoyée (auth requise)
+router.delete('/:friendId/cancel', requireAuth, (req, res) => {
+  const user_id = req.userId;
+  const friendId = req.params.friendId;
+
+  const row = db.prepare("SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ? AND status = 'pending'").get(user_id, friendId);
+  if (!row) {
+    return res.status(404).json({ error: 'Aucune demande en attente.' });
+  }
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM friendships WHERE user_id = ? AND friend_id = ?').run(user_id, friendId);
+    db.prepare('DELETE FROM friendships WHERE user_id = ? AND friend_id = ?').run(friendId, user_id);
+  })();
+
+  return res.json({ ok: true });
 });
 
 // DELETE /api/friends/:friendId — retirer un ami (bidirectionnel, auth requise)

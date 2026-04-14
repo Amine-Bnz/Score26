@@ -95,6 +95,8 @@ const migrations = [
   "ALTER TABLE pronos ADD COLUMN score_predit_90_b INTEGER",
   "ALTER TABLE matchs ADD COLUMN score_reel_90_a INTEGER",
   "ALTER TABLE matchs ADD COLUMN score_reel_90_b INTEGER",
+  // v7 demandes d'amitié
+  "ALTER TABLE friendships ADD COLUMN status TEXT NOT NULL DEFAULT 'accepted'",
 ];
 for (const sql of migrations) {
   try {
@@ -195,6 +197,16 @@ db.exec(`
   );
 `);
 
+// Table v7 : blocage d'utilisateurs
+db.exec(`
+  CREATE TABLE IF NOT EXISTS blocks (
+    blocker_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (blocker_id, blocked_id)
+  );
+`);
+
 // ── Index de performance (idempotents) ──────────────────────────────────────
 db.exec(`
   -- pronos : jointures et agrégations constantes sur user_id et match_id
@@ -206,8 +218,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_matchs_date_coup_envoi ON matchs(date_coup_envoi);
   CREATE INDEX IF NOT EXISTS idx_matchs_journee         ON matchs(journee);
 
-  -- friendships : lookup bidirectionnel
+  -- friendships : lookup bidirectionnel + status
   CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id);
+  CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
 
   -- group_members : lookup par user_id (PK couvre déjà group_id, user_id)
   CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON group_members(user_id);

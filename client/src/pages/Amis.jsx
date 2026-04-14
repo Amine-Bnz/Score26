@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { getFriendRanking, addFriend, removeFriend, getGlobalRanking, getFriendHistory, compareFriend, getMyGroups, getGroupRanking, createGroup, joinGroup, leaveGroup, getMatchdayRanking, getMatchdayList, getMyChallenges, createChallenge, acceptChallenge, declineChallenge, cancelChallenge, getMatchs } from '../api'
+import { getFriendRanking, addFriend, removeFriend, getGlobalRanking, getFriendHistory, compareFriend, getMyGroups, getGroupRanking, createGroup, joinGroup, leaveGroup, getMatchdayRanking, getMatchdayList, getMyChallenges, createChallenge, acceptChallenge, declineChallenge, cancelChallenge, getMatchs, previewFriend, previewGroup, getFriendRequests, getSentRequests, acceptFriendRequest, declineFriendRequest, cancelFriendRequest, getGroupMembers, kickGroupMember, regenerateGroupCode, blockUser } from '../api'
 import { t } from '../i18n'
 import AvatarInitials from '../components/AvatarInitials'
 import ChallengeCard from '../components/ChallengeCard'
@@ -11,6 +11,7 @@ export default function Amis({ userId, lang, friendCode, deepLink, onDeepLinkHan
     if (deepLink?.type === 'group') return 'groupes'
     return 'amis'
   })
+  const [requestCount, setRequestCount] = useState(0)
   // Tabs visitées : ne monte un onglet qu'au premier clic, puis le garde monté (pas de re-fetch)
   const [visited, setVisited] = useState(() => {
     const init = new Set(['amis'])
@@ -30,19 +31,24 @@ export default function Amis({ userId, lang, friendCode, deepLink, onDeepLinkHan
           <button
             key={key}
             onClick={() => switchTab(key)}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all
+            className={`relative flex-1 py-2 rounded-lg text-xs font-semibold transition-all
               ${tab === key
                 ? 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
                 : 'text-surface-400 dark:text-surface-500'}`}
           >
             {t(lang, key === 'amis' ? 'friendRankingTab' : key === 'groupes' ? 'groupsTab' : 'globalRankingTab')}
+            {key === 'amis' && requestCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-result-miss text-white text-[9px] font-bold flex items-center justify-center">
+                {requestCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Monte au premier clic, reste monte ensuite (hidden quand pas actif) */}
       <div className={`flex flex-col gap-4 ${tab !== 'amis' ? 'hidden' : ''}`}>
-        <AmisTab userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink?.type === 'invite' ? deepLink : null} onDeepLinkHandled={onDeepLinkHandled} />
+        <AmisTab userId={userId} lang={lang} friendCode={friendCode} deepLink={deepLink?.type === 'invite' ? deepLink : null} onDeepLinkHandled={onDeepLinkHandled} onRequestCountChange={setRequestCount} />
       </div>
       {visited.has('groupes') && (
         <div className={`flex flex-col gap-4 ${tab !== 'groupes' ? 'hidden' : ''}`}>
@@ -83,8 +89,35 @@ function useToast() {
   return { toast, showToast }
 }
 
+// ── Modale de confirmation ──────────────────────────────────────────────────
+function ConfirmModal({ title, children, lang, onConfirm, onCancel, loading }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onCancel}>
+      <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+        <h3 className="font-display font-bold text-base text-surface-900 dark:text-white text-center">{title}</h3>
+        <div className="flex flex-col items-center gap-2">{children}</div>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 text-sm font-semibold active:scale-[0.98] transition-transform"
+          >
+            {t(lang, 'cancelBtn')}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl bg-accent text-surface-950 text-sm font-semibold active:scale-[0.98] transition-transform disabled:opacity-50"
+          >
+            {loading ? <span className="spinner-btn" /> : t(lang, 'confirmBtn')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Onglet Amis ───────────────────────────────────────────────────────────────
-function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
+function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled, onRequestCountChange }) {
   const [code, setCode] = useState(deepLink?.code ?? '')
   const [ranking, setRanking] = useState([])
   const [loading, setLoading] = useState(true)
@@ -94,28 +127,71 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   const [compareLoading, setCompareLoading] = useState(false)
   const [challenges, setChallenges] = useState([])
   const [challengeFriend, setChallengeFriend] = useState(null) // { id, pseudo }
+  const [deepLinkConfirm, setDeepLinkConfirm] = useState(null) // { code, pseudo, avatar_seed }
+  const [deepLinkLoading, setDeepLinkLoading] = useState(false)
+  const [friendRequests, setFriendRequests] = useState([])
+  const [sentRequests, setSentRequests] = useState([])
+  const [blockConfirm, setBlockConfirm] = useState(null) // { id, pseudo }
   const { toast, showToast } = useToast()
 
-  useEffect(() => { loadRanking(); loadChallenges() }, [userId])
+  useEffect(() => { loadRanking(); loadChallenges(); loadRequests() }, [userId])
 
   function loadChallenges() {
     getMyChallenges(userId).then(data => { if (Array.isArray(data)) setChallenges(data) })
   }
 
-  // Auto-add from deep-link
+  function loadRequests() {
+    getFriendRequests(userId).then(data => {
+      if (Array.isArray(data)) {
+        setFriendRequests(data)
+        onRequestCountChange?.(data.length)
+      }
+    })
+    getSentRequests(userId).then(data => {
+      if (Array.isArray(data)) setSentRequests(data)
+    })
+  }
+
+  // Deep-link : afficher la modale de confirmation au lieu d'ajouter directement
   useEffect(() => {
     if (!deepLink?.code) return
-    addFriend({ friend_code: deepLink.code }).then(res => {
+    previewFriend(deepLink.code).then(res => {
       if (!res.error) {
-        showToast(t(lang, 'friendAdded'))
-        loadRanking()
+        setDeepLinkConfirm({ code: deepLink.code, pseudo: res.pseudo, avatar_seed: res.avatar_seed })
+      } else {
+        showToast(res.error, true)
+        onDeepLinkHandled?.()
+      }
+    })
+  }, [])
+
+  function confirmDeepLinkAdd() {
+    if (!deepLinkConfirm) return
+    setDeepLinkLoading(true)
+    addFriend({ friend_code: deepLinkConfirm.code }).then(res => {
+      if (!res.error) {
+        if (res.status === 'accepted') {
+          showToast(t(lang, 'mutualAccepted'))
+          loadRanking()
+        } else {
+          showToast(t(lang, 'friendRequestSent'))
+        }
+        loadRequests()
       } else {
         showToast(res.error, true)
       }
       setCode('')
+      setDeepLinkConfirm(null)
+      setDeepLinkLoading(false)
       onDeepLinkHandled?.()
     })
-  }, [])
+  }
+
+  function cancelDeepLinkAdd() {
+    setDeepLinkConfirm(null)
+    setCode('')
+    onDeepLinkHandled?.()
+  }
 
   function loadRanking() {
     setLoading(true)
@@ -130,10 +206,15 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
     const res = await addFriend({ friend_code: trimmed })
     if (res.error) {
       showToast(res.error, true)
-    } else {
-      showToast(t(lang, 'friendAdded'))
+    } else if (res.status === 'accepted') {
+      showToast(t(lang, 'mutualAccepted'))
       setCode('')
       loadRanking()
+      loadRequests()
+    } else {
+      showToast(t(lang, 'friendRequestSent'))
+      setCode('')
+      loadRequests()
     }
   }
 
@@ -142,6 +223,18 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
     if (!res.error) {
       showToast(t(lang, 'friendRemoved'))
       loadRanking()
+    }
+  }
+
+  async function handleBlock(userId) {
+    const res = await blockUser({ blockedId: userId })
+    if (!res.error) {
+      showToast(t(lang, 'userBlocked'))
+      setBlockConfirm(null)
+      loadRanking()
+      loadRequests()
+    } else {
+      showToast(res.error, true)
     }
   }
 
@@ -191,6 +284,64 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
   return (
     <>
       <Toast toast={toast} />
+
+      {/* Modale de confirmation blocage */}
+      {blockConfirm && (
+        <ConfirmModal
+          title={t(lang, 'blockConfirm')}
+          lang={lang}
+          onConfirm={() => handleBlock(blockConfirm.id)}
+          onCancel={() => setBlockConfirm(null)}
+        >
+          <AvatarInitials pseudo={blockConfirm.pseudo} size={40} />
+          <p className="text-sm font-semibold text-surface-900 dark:text-white">{blockConfirm.pseudo}</p>
+        </ConfirmModal>
+      )}
+
+      {/* Modale de confirmation deep link ami */}
+      {deepLinkConfirm && (
+        <ConfirmModal
+          title={t(lang, 'confirmAddFriend')}
+          lang={lang}
+          onConfirm={confirmDeepLinkAdd}
+          onCancel={cancelDeepLinkAdd}
+          loading={deepLinkLoading}
+        >
+          <AvatarInitials pseudo={deepLinkConfirm.pseudo} size={48} />
+          <p className="text-sm font-semibold text-surface-900 dark:text-white">{deepLinkConfirm.pseudo}</p>
+        </ConfirmModal>
+      )}
+
+      {/* Demandes d'amitié reçues */}
+      {friendRequests.length > 0 && (
+        <FriendRequestsBanner
+          requests={friendRequests}
+          lang={lang}
+          onAccept={async id => {
+            const res = await acceptFriendRequest(id)
+            if (!res.error) { showToast(t(lang, 'friendRequestAccepted')); loadRanking(); loadRequests() }
+            else showToast(res.error, true)
+          }}
+          onDecline={async id => {
+            const res = await declineFriendRequest(id)
+            if (!res.error) { showToast(t(lang, 'friendRequestDeclined')); loadRequests() }
+            else showToast(res.error, true)
+          }}
+        />
+      )}
+
+      {/* Demandes envoyées en attente */}
+      {sentRequests.length > 0 && (
+        <SentRequestsBanner
+          requests={sentRequests}
+          lang={lang}
+          onCancel={async id => {
+            const res = await cancelFriendRequest(id)
+            if (!res.error) { showToast(t(lang, 'friendRequestCancelled')); loadRequests() }
+            else showToast(res.error, true)
+          }}
+        />
+      )}
 
       {/* Bannière défis reçus en attente */}
       {pendingReceived.length > 0 && (
@@ -277,7 +428,7 @@ function AmisTab({ userId, lang, friendCode, deepLink, onDeepLinkHandled }) {
       )}
 
       {ranking.length > 1 && (
-        <RankingList ranking={ranking} userId={userId} lang={lang} onRemove={handleRemove} onHistory={openHistory} onCompare={openCompare} onChallenge={friend => setChallengeFriend(friend)} />
+        <RankingList ranking={ranking} userId={userId} lang={lang} onRemove={handleRemove} onHistory={openHistory} onCompare={openCompare} onChallenge={friend => setChallengeFriend(friend)} onBlock={friend => setBlockConfirm(friend)} />
       )}
     </>
   )
@@ -401,30 +552,56 @@ function GlobalTab({ userId, lang }) {
 function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedGroup, setSelectedGroup] = useState(null) // { id, name, invite_code }
+  const [selectedGroup, setSelectedGroup] = useState(null) // { id, name, invite_code, owner_id }
   const [groupRanking, setGroupRanking] = useState([])
   const [groupLoading, setGroupLoading] = useState(false)
+  const [groupMembers, setGroupMembers] = useState([])
+  const [showMembers, setShowMembers] = useState(false)
+  const [kickConfirm, setKickConfirm] = useState(null) // { id, pseudo }
+  const [regenConfirm, setRegenConfirm] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
   const [newName, setNewName] = useState('')
   const [joinCode, setJoinCode] = useState('')
+  const [deepLinkConfirm, setDeepLinkConfirm] = useState(null) // { code, name, member_count }
+  const [deepLinkLoading, setDeepLinkLoading] = useState(false)
   const { toast, showToast } = useToast()
 
   useEffect(() => { loadGroups() }, [userId])
 
-  // Auto-join from deep-link
+  // Deep-link : afficher la modale de confirmation au lieu de rejoindre directement
   useEffect(() => {
     if (!deepLink?.code) return
-    joinGroup({ invite_code: deepLink.code }).then(res => {
+    previewGroup(deepLink.code).then(res => {
+      if (!res.error) {
+        setDeepLinkConfirm({ code: deepLink.code, name: res.name, member_count: res.member_count })
+      } else {
+        showToast(res.error, true)
+        onDeepLinkHandled?.()
+      }
+    })
+  }, [])
+
+  function confirmDeepLinkJoin() {
+    if (!deepLinkConfirm) return
+    setDeepLinkLoading(true)
+    joinGroup({ invite_code: deepLinkConfirm.code }).then(res => {
       if (!res.error) {
         showToast(t(lang, 'groupJoined'))
         loadGroups()
       } else {
         showToast(res.error, true)
       }
+      setDeepLinkConfirm(null)
+      setDeepLinkLoading(false)
       onDeepLinkHandled?.()
     })
-  }, [])
+  }
+
+  function cancelDeepLinkJoin() {
+    setDeepLinkConfirm(null)
+    onDeepLinkHandled?.()
+  }
 
   function loadGroups() {
     setLoading(true)
@@ -436,8 +613,15 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
   async function openGroupRanking(group) {
     setSelectedGroup(group)
     setGroupLoading(true)
-    const data = await getGroupRanking(group.id)
-    if (!data.error) setGroupRanking(data)
+    setShowMembers(false)
+    setKickConfirm(null)
+    setRegenConfirm(false)
+    const [rankData, membersData] = await Promise.all([
+      getGroupRanking(group.id),
+      getGroupMembers(group.id),
+    ])
+    if (!rankData.error) setGroupRanking(rankData)
+    if (Array.isArray(membersData)) setGroupMembers(membersData)
     setGroupLoading(false)
   }
 
@@ -478,11 +662,65 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
 
   if (loading) return <div className="flex flex-col gap-2">{[0,1,2,3,4].map(i => <RankingRowSkeleton key={i} />)}</div>
 
+  const isOwner = selectedGroup?.owner_id === userId
+
+  async function handleKick(memberId) {
+    const res = await kickGroupMember({ groupId: selectedGroup.id, userId: memberId })
+    if (!res.error) {
+      showToast(t(lang, 'memberKicked'))
+      setKickConfirm(null)
+      // Refresh members + ranking
+      const [rankData, membersData] = await Promise.all([
+        getGroupRanking(selectedGroup.id),
+        getGroupMembers(selectedGroup.id),
+      ])
+      if (!rankData.error) setGroupRanking(rankData)
+      if (Array.isArray(membersData)) setGroupMembers(membersData)
+    } else {
+      showToast(res.error, true)
+    }
+  }
+
+  async function handleRegenCode() {
+    const res = await regenerateGroupCode({ groupId: selectedGroup.id })
+    if (!res.error) {
+      showToast(t(lang, 'codeRegenerated'))
+      setSelectedGroup(prev => ({ ...prev, invite_code: res.invite_code }))
+      setRegenConfirm(false)
+    } else {
+      showToast(res.error, true)
+    }
+  }
+
   // Vue classement d'un groupe
   if (selectedGroup) {
     return (
       <>
         <Toast toast={toast} />
+
+        {/* Modale confirmation kick */}
+        {kickConfirm && (
+          <ConfirmModal
+            title={t(lang, 'kickConfirm')}
+            lang={lang}
+            onConfirm={() => handleKick(kickConfirm.id)}
+            onCancel={() => setKickConfirm(null)}
+          >
+            <AvatarInitials pseudo={kickConfirm.pseudo} size={40} />
+            <p className="text-sm font-semibold text-surface-900 dark:text-white">{kickConfirm.pseudo}</p>
+          </ConfirmModal>
+        )}
+
+        {/* Modale confirmation régénération code */}
+        {regenConfirm && (
+          <ConfirmModal
+            title={t(lang, 'regenerateConfirm')}
+            lang={lang}
+            onConfirm={handleRegenCode}
+            onCancel={() => setRegenConfirm(false)}
+          />
+        )}
+
         <button onClick={() => setSelectedGroup(null)} className="text-xs text-accent font-semibold mb-1">
           &larr; {t(lang, 'back')}
         </button>
@@ -509,6 +747,14 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
             >
               {lang === 'fr' ? 'Copier' : 'Copy'}
             </button>
+            {isOwner && (
+              <button
+                onClick={() => setRegenConfirm(true)}
+                className="text-xs font-semibold px-2 py-1 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-500 dark:text-surface-400 active:scale-95 transition-transform"
+              >
+                {t(lang, 'regenerateCode')}
+              </button>
+            )}
           </div>
           <div className="flex justify-center py-1">
             <div className="bg-white p-2 rounded-lg">
@@ -526,6 +772,52 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
           </p>
         </div>
 
+        {/* Liste des membres */}
+        <div className="rounded-xl bg-surface-100 dark:bg-surface-800/60 overflow-hidden">
+          <button
+            onClick={() => setShowMembers(!showMembers)}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-left"
+          >
+            <span className="text-sm font-semibold text-surface-700 dark:text-surface-300 flex-1">
+              {t(lang, 'groupMembers')} ({groupMembers.length})
+            </span>
+            <svg viewBox="0 0 24 24" className={`w-4 h-4 text-surface-400 transition-transform ${showMembers ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          {showMembers && (
+            <div className="flex flex-col gap-1 px-3 pb-3">
+              {groupMembers.map(m => (
+                <div key={m.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white dark:bg-surface-900">
+                  <AvatarInitials pseudo={m.pseudo} size={32} />
+                  <p className="flex-1 text-sm text-surface-800 dark:text-surface-200 truncate">
+                    {m.pseudo}
+                    {m.is_owner === 1 && (
+                      <span className="ml-1.5 text-[9px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full">
+                        {t(lang, 'ownerBadge')}
+                      </span>
+                    )}
+                    {m.id === userId && (
+                      <span className="ml-1 text-[10px] text-surface-400">({t(lang, 'you')})</span>
+                    )}
+                  </p>
+                  {isOwner && m.id !== userId && (
+                    <button
+                      onClick={() => setKickConfirm({ id: m.id, pseudo: m.pseudo })}
+                      className="text-surface-400 hover:text-result-miss transition-colors p-1"
+                      aria-label={t(lang, 'kickMember')}
+                    >
+                      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {groupLoading ? (
           <div className="flex flex-col gap-2">{[0,1,2,3].map(i => <RankingRowSkeleton key={i} />)}</div>
         ) : (
@@ -538,6 +830,20 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
   return (
     <>
       <Toast toast={toast} />
+
+      {/* Modale de confirmation deep link groupe */}
+      {deepLinkConfirm && (
+        <ConfirmModal
+          title={t(lang, 'confirmJoinGroup')}
+          lang={lang}
+          onConfirm={confirmDeepLinkJoin}
+          onCancel={cancelDeepLinkJoin}
+          loading={deepLinkLoading}
+        >
+          <p className="text-sm font-semibold text-surface-900 dark:text-white">{deepLinkConfirm.name}</p>
+          <p className="text-xs text-surface-400">{deepLinkConfirm.member_count} {t(lang, 'membersCount')}</p>
+        </ConfirmModal>
+      )}
 
       {/* Boutons Créer / Rejoindre */}
       <div className="flex gap-2">
@@ -630,7 +936,7 @@ function GroupesTab({ userId, lang, deepLink, onDeepLinkHandled }) {
 }
 
 // ── Composant Ranking partagé ─────────────────────────────────────────────────
-function RankingList({ ranking, userId, lang, onRemove, onHistory, onCompare, onChallenge }) {
+function RankingList({ ranking, userId, lang, onRemove, onHistory, onCompare, onChallenge, onBlock }) {
   return (
     <div className="flex flex-col gap-2">
       {ranking.map((user, i) => {
@@ -665,55 +971,74 @@ function RankingList({ ranking, userId, lang, onRemove, onHistory, onCompare, on
             </span>
 
             {/* Actions (amis seulement) */}
-            {!isMe && onChallenge && (
-              <button
-                onClick={() => onChallenge({ id: user.id, pseudo: user.pseudo })}
-                className="text-surface-400 hover:text-gold transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
-                aria-label={t(lang, 'challenge')}
-                title={t(lang, 'challenge')}
-              >
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
-              </button>
-            )}
-            {!isMe && onCompare && (
-              <button
-                onClick={() => onCompare(user.id)}
-                className="text-surface-400 hover:text-accent transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
-                aria-label={t(lang, 'compare')}
-                title={t(lang, 'compare')}
-              >
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <polyline points="18 8 22 12 18 16" />
-                  <polyline points="6 8 2 12 6 16" />
-                  <line x1="2" y1="12" x2="22" y2="12" />
-                </svg>
-              </button>
-            )}
-            {!isMe && onHistory && (
-              <button
-                onClick={() => onHistory(user.id)}
-                className="text-surface-400 hover:text-accent transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
-                aria-label={t(lang, 'friendHistory')}
-              >
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              </button>
-            )}
-            {!isMe && onRemove && (
-              <button
-                onClick={() => onRemove(user.id)}
-                className="text-surface-400 hover:text-result-miss transition-colors p-1 -mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
-                aria-label={t(lang, 'removeFriend')}
-              >
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+            {!isMe && (onChallenge || onCompare || onHistory || onRemove || onBlock) && (
+              <div className="flex items-center gap-1">
+                {onChallenge && (
+                  <button
+                    onClick={() => onChallenge({ id: user.id, pseudo: user.pseudo })}
+                    className="flex flex-col items-center gap-0.5 text-surface-400 hover:text-gold transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                    aria-label={t(lang, 'challenge')}
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                    <span className="text-[9px] leading-none">{t(lang, 'challenge')}</span>
+                  </button>
+                )}
+                {onCompare && (
+                  <button
+                    onClick={() => onCompare(user.id)}
+                    className="flex flex-col items-center gap-0.5 text-surface-400 hover:text-accent transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                    aria-label={t(lang, 'compare')}
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <polyline points="18 8 22 12 18 16" />
+                      <polyline points="6 8 2 12 6 16" />
+                      <line x1="2" y1="12" x2="22" y2="12" />
+                    </svg>
+                    <span className="text-[9px] leading-none">{t(lang, 'compare')}</span>
+                  </button>
+                )}
+                {onHistory && (
+                  <button
+                    onClick={() => onHistory(user.id)}
+                    className="flex flex-col items-center gap-0.5 text-surface-400 hover:text-accent transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                    aria-label={t(lang, 'friendHistory')}
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    <span className="text-[9px] leading-none">{t(lang, 'friendHistory')}</span>
+                  </button>
+                )}
+                {onRemove && (
+                  <button
+                    onClick={() => onRemove(user.id)}
+                    className="flex flex-col items-center gap-0.5 text-surface-400 hover:text-result-miss transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                    aria-label={t(lang, 'removeFriend')}
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                    <span className="text-[9px] leading-none">{t(lang, 'removeFriend')}</span>
+                  </button>
+                )}
+                {onBlock && (
+                  <button
+                    onClick={() => onBlock({ id: user.id, pseudo: user.pseudo })}
+                    className="flex flex-col items-center gap-0.5 text-surface-400 hover:text-result-miss transition-colors p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                    aria-label={t(lang, 'blockUser')}
+                  >
+                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                    </svg>
+                    <span className="text-[9px] leading-none">{t(lang, 'blockUser')}</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )
@@ -793,6 +1118,92 @@ function CompareView({ data, lang, onBack }) {
               </div>
             )
           })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Bannière demandes d'amitié reçues ───────────────────────────────────────
+function FriendRequestsBanner({ requests, lang, onAccept, onDecline }) {
+  const [expanded, setExpanded] = useState(true)
+
+  return (
+    <div className="rounded-xl bg-accent/5 border border-accent/20 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-left"
+      >
+        <span className="w-5 h-5 rounded-full bg-result-miss/20 flex items-center justify-center text-[10px] font-bold text-result-miss flex-shrink-0">
+          {requests.length}
+        </span>
+        <span className="text-sm font-semibold text-surface-800 dark:text-surface-200 flex-1">
+          {t(lang, 'friendRequests')} ({requests.length})
+        </span>
+        <svg viewBox="0 0 24 24" className={`w-4 h-4 text-surface-400 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {expanded && (
+        <div className="flex flex-col gap-2 px-3 pb-3">
+          {requests.map(r => (
+            <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white dark:bg-surface-800">
+              <AvatarInitials pseudo={r.pseudo} size={36} />
+              <p className="flex-1 text-sm font-semibold text-surface-900 dark:text-white truncate">{r.pseudo}</p>
+              <button
+                onClick={() => onAccept(r.id)}
+                className="px-3 py-1.5 rounded-lg bg-result-exact text-white text-xs font-semibold active:scale-95 transition-transform"
+              >
+                {t(lang, 'accept')}
+              </button>
+              <button
+                onClick={() => onDecline(r.id)}
+                className="px-3 py-1.5 rounded-lg bg-result-miss/10 text-result-miss text-xs font-semibold active:scale-95 transition-transform"
+              >
+                {t(lang, 'decline')}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Bannière demandes envoyées en attente ──────────────────────────────────
+function SentRequestsBanner({ requests, lang, onCancel }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="rounded-xl bg-surface-100 dark:bg-surface-800/60 border border-surface-200 dark:border-surface-700 overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-left"
+      >
+        <span className="w-5 h-5 rounded-full bg-surface-300 dark:bg-surface-600 flex items-center justify-center text-[10px] font-bold text-surface-600 dark:text-surface-300 flex-shrink-0">
+          {requests.length}
+        </span>
+        <span className="text-sm font-medium text-surface-500 dark:text-surface-400 flex-1">
+          {t(lang, 'pendingSent')} ({requests.length})
+        </span>
+        <svg viewBox="0 0 24 24" className={`w-4 h-4 text-surface-400 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {expanded && (
+        <div className="flex flex-col gap-2 px-3 pb-3">
+          {requests.map(r => (
+            <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white dark:bg-surface-900">
+              <AvatarInitials pseudo={r.pseudo} size={32} />
+              <p className="flex-1 text-sm text-surface-600 dark:text-surface-300 truncate">{r.pseudo}</p>
+              <button
+                onClick={() => onCancel(r.id)}
+                className="px-3 py-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-500 dark:text-surface-400 text-xs font-semibold active:scale-95 transition-transform"
+              >
+                {t(lang, 'cancelRequest')}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
