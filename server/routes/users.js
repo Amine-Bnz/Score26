@@ -151,7 +151,7 @@ router.get('/ranking/matchday/list', (req, res) => {
 // GET /api/users/:id — récup��ration du profil + stats
 // Email visible uniquement par le propriétaire du compte (auth optionnelle)
 router.get('/:id', optionalAuth, (req, res) => {
-  const user = db.prepare('SELECT id, pseudo, avatar_seed, friend_code, email, created_at FROM users WHERE id = ?').get(req.params.id);
+  const user = db.prepare('SELECT id, pseudo, avatar_seed, friend_code, email, email_verified, created_at FROM users WHERE id = ?').get(req.params.id);
 
   if (!user) {
     return res.status(404).json({ error: 'Utilisateur introuvable.' });
@@ -185,7 +185,7 @@ router.get('/:id', optionalAuth, (req, res) => {
 
   // S5: email visible uniquement par le propriétaire (RGPD)
   const isOwner = req.userId === req.params.id;
-  const { email, ...publicUser } = user;
+  const { email, email_verified, ...publicUser } = user;
   const responseUser = isOwner ? user : publicUser;
 
   return res.json({ ...responseUser, stats, rank, totalPlayers });

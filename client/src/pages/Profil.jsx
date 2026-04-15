@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccount, getNotifSettings, updateNotifDelay, getFriendRanking, deleteAccount, getUserHistory } from '../api'
+import { getUser, getVapidPublicKey, subscribePush, unsubscribePush, secureAccount, getNotifSettings, updateNotifDelay, getFriendRanking, deleteAccount, getUserHistory, resendVerificationEmail } from '../api'
 import { t, splitTeam, phaseLabel } from '../i18n'
 import AvatarInitials from '../components/AvatarInitials'
 import { ProfileSkeleton } from '../components/Skeleton'
@@ -212,6 +212,17 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
         </div>
       )}
 
+      {/* Bannière vérification email */}
+      {user.email && !user.email_verified && (
+        <EmailVerificationBanner lang={lang} />
+      )}
+      {user.email && user.email_verified === 1 && (
+        <div className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl bg-result-exact/8 border border-result-exact/15">
+          <span className="w-1.5 h-1.5 rounded-full bg-result-exact flex-shrink-0" />
+          <span className="text-xs font-medium text-result-exact">{t(lang, 'emailVerified')}</span>
+        </div>
+      )}
+
       {/* Sélecteur de thème */}
       <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-100 dark:bg-surface-800">
         <span className="text-xs font-medium text-surface-500 dark:text-surface-400 flex-shrink-0">
@@ -242,15 +253,16 @@ export default function Profil({ userId, lang, friendCode, theme, onThemeToggle 
       {/* Délai de rappel personnalisable */}
       {notifStatus === 'granted' && <NotifDelaySelector userId={userId} lang={lang} />}
 
-      {/* Sécuriser le compte (pour les comptes sans email) */}
+      {/* Ajouter email (pour les comptes sans email) */}
       {user && !user.email && (
         <div className="w-full">
           {!showSecure ? (
             <button
               onClick={() => setShowSecure(true)}
-              className="w-full py-3 rounded-xl bg-surface-100 dark:bg-surface-800 active:scale-[0.98] text-surface-600 dark:text-surface-300 font-medium text-sm transition-all"
+              className="w-full py-3 rounded-xl bg-gold-muted border border-gold/20 active:scale-[0.98] text-gold-dark dark:text-gold-light font-medium text-sm transition-all flex flex-col items-center gap-1"
             >
-              {t(lang, 'secureAccount')}
+              <span>{t(lang, 'secureAccount')}</span>
+              <span className="text-[11px] font-normal opacity-70">{t(lang, 'secureAccountSubtitle')}</span>
             </button>
           ) : (
             <div className="flex flex-col gap-2 p-4 rounded-xl bg-surface-100 dark:bg-surface-800">
@@ -597,6 +609,39 @@ function NotifDelaySelector({ userId, lang }) {
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+function EmailVerificationBanner({ lang }) {
+  const [status, setStatus] = useState('idle') // 'idle' | 'sending' | 'sent' | 'error'
+
+  async function handleResend() {
+    setStatus('sending')
+    const res = await resendVerificationEmail()
+    if (res.error) { setStatus('error'); return }
+    if (res.already_verified) { setStatus('sent'); return }
+    setStatus(res.sent ? 'sent' : 'error')
+  }
+
+  return (
+    <div className="w-full flex flex-col gap-2 px-4 py-3 rounded-xl bg-gold-muted border border-gold/20">
+      <div className="flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" />
+        <span className="text-xs font-semibold text-gold-dark dark:text-gold-light">{t(lang, 'emailNotVerified')}</span>
+      </div>
+      <p className="text-[11px] text-gold-dark/70 dark:text-gold-light/60 leading-relaxed">
+        {t(lang, 'emailNotVerifiedHint')}
+      </p>
+      <button
+        onClick={handleResend}
+        disabled={status === 'sending' || status === 'sent'}
+        className="self-start text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-gold/20 text-gold-dark dark:text-gold-light active:scale-95 transition-all disabled:opacity-50"
+      >
+        {status === 'sending' ? <span className="spinner-btn" style={{ width: 12, height: 12, borderWidth: 1.5 }} /> :
+         status === 'sent' ? t(lang, 'verificationSent') :
+         t(lang, 'resendVerification')}
+      </button>
     </div>
   )
 }

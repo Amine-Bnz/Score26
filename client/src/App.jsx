@@ -12,7 +12,7 @@ const Amis         = lazy(() => import('./pages/Amis'))
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOfflineSync } from './hooks/useOfflineSync'
 import { getMatchs, getUser } from './api'
-import { tRandom } from './i18n'
+import { t, tRandom } from './i18n'
 
 // Lecture localStorage sécurisée (navigation privée Safari peut throw)
 function lsGet(key, fallback) {
@@ -59,6 +59,7 @@ export default function App() {
   const [friendCode, setFriendCode] = useState(null)
   const [deepLink, setDeepLink] = useState(null) // { type: 'invite'|'group', code: '...' }
   const [resultToast, setResultToast] = useState(null) // { msg, type: 'exact'|'good'|'miss' }
+  const [welcomeToast, setWelcomeToast] = useState(false)
   const resultToastQueue = useRef([])
 
   // Récupération de l'identité persistée en localStorage + deep-links
@@ -184,7 +185,7 @@ export default function App() {
 
   // Onboarding si pas encore de compte
   if (!userId) {
-    return <Onboarding lang={lang} onComplete={id => setUserId(id)} />
+    return <Onboarding lang={lang} onComplete={id => { setUserId(id); setWelcomeToast(true) }} />
   }
 
   return (
@@ -213,6 +214,11 @@ export default function App() {
 
       <Navbar page={page} onNavigate={navigateTo} lang={lang} />
 
+      {/* Toast bienvenue (premier lancement) */}
+      {welcomeToast && (
+        <WelcomeToast lang={lang} onDone={() => setWelcomeToast(false)} />
+      )}
+
       {/* Toast résultat de prono */}
       <div aria-live="polite" aria-atomic="true">
         {resultToast && (
@@ -224,6 +230,18 @@ export default function App() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function WelcomeToast({ lang, onDone }) {
+  useEffect(() => {
+    const id = setTimeout(onDone, 3500)
+    return () => clearTimeout(id)
+  }, [])
+  return (
+    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg animate-fade-in max-w-[90vw] text-center bg-accent/90 text-surface-950">
+      {t(lang, 'welcomeToast')}
     </div>
   )
 }

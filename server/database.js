@@ -97,6 +97,10 @@ const migrations = [
   "ALTER TABLE matchs ADD COLUMN score_reel_90_b INTEGER",
   // v7 demandes d'amitié
   "ALTER TABLE friendships ADD COLUMN status TEXT NOT NULL DEFAULT 'accepted'",
+  // v8 vérification email
+  "ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE users ADD COLUMN email_verification_token TEXT",
+  "ALTER TABLE users ADD COLUMN email_verification_expires DATETIME",
 ];
 for (const sql of migrations) {
   try {

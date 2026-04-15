@@ -40,6 +40,9 @@ export default function Onboarding({ lang, onComplete }) {
           >
             {t(lang, 'continueWithoutAccount')}
           </button>
+          <p className="text-[11px] text-surface-400 dark:text-surface-600 text-center leading-relaxed -mt-1">
+            {t(lang, 'continueWithoutAccountHint')}
+          </p>
         </div>
       )}
 

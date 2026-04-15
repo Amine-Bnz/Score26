@@ -400,10 +400,10 @@ function FriendPronosSection({ matchId, userId, lang }) {
 
   return (
     <div className="mt-2 pt-2 border-t border-surface-100 dark:border-surface-800/60">
-      <button onClick={toggle} className="flex items-center gap-1.5 w-full min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded">
-        <FriendsIcon className="w-3.5 h-3.5 text-surface-400 dark:text-surface-500" />
-        <span className="text-[10px] font-medium text-surface-400 dark:text-surface-500">{t(lang, 'friendPronos')}</span>
-        <ChevronIcon className={`w-3 h-3 ml-auto text-surface-400 dark:text-surface-500 transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
+      <button onClick={toggle} className={`flex items-center gap-2 w-full min-h-[44px] px-3 py-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${open ? 'bg-accent/8' : 'bg-surface-50 dark:bg-surface-800/50 active:bg-surface-100 dark:active:bg-surface-800'}`}>
+        <FriendsIcon className={`w-4 h-4 flex-shrink-0 ${open ? 'text-accent' : 'text-surface-400 dark:text-surface-500'}`} />
+        <span className={`text-xs font-medium ${open ? 'text-accent' : 'text-surface-500 dark:text-surface-400'}`}>{t(lang, 'friendPronos')}</span>
+        <ChevronIcon className={`w-3.5 h-3.5 ml-auto flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-90 text-accent' : 'text-surface-400 dark:text-surface-500'}`} />
       </button>
       {open && (
         <div className="mt-2 flex flex-col gap-2">

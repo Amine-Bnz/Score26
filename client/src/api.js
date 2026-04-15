@@ -62,6 +62,15 @@ export async function secureAccount({ email, password }) {
   return handleResponse(res)
 }
 
+export async function resendVerificationEmail() {
+  const res = await fetch(`${BASE}/auth/resend-verification`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({}),
+  })
+  return handleResponse(res)
+}
+
 export async function createUser({ id, pseudo, avatar_seed }) {
   const res = await fetch(`${BASE}/users`, {
     method: 'POST',

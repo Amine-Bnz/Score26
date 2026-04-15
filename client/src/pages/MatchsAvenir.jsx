@@ -144,6 +144,7 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
       {(() => {
         const placed = aVenir.filter(m => m.score_predit_a != null).length
         const total = aVenir.length
+        const remaining = total - placed
         return (
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-display text-base font-bold text-surface-800 dark:text-surface-200">
@@ -155,9 +156,15 @@ export default function MatchsAvenir({ userId, lang, isOnline = true, initialDat
                 className={`text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent
                   ${showOnlyMissing
                     ? 'bg-accent text-surface-950'
-                    : 'bg-surface-200 dark:bg-surface-800 text-surface-500 dark:text-surface-400'}`}
+                    : remaining > 0
+                      ? 'bg-accent/15 text-accent'
+                      : 'bg-result-exact/10 text-result-exact'}`}
               >
-                {t(lang, 'pronosPlaced')} {placed}/{total}
+                {showOnlyMissing
+                  ? t(lang, 'pronosSeeAll')
+                  : remaining > 0
+                    ? `${remaining} ${t(lang, 'pronosRemaining')}`
+                    : t(lang, 'pronosAllDone')}
               </button>
             )}
           </div>
